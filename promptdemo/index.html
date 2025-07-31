@@ -172,6 +172,7 @@
                 if (!responseWithout.ok) throw new Error(`Failed to load without.txt (Status: ${responseWithout.status})`);
                 const [textWith, textWithout] = await Promise.all([ responseWith.text(), responseWithout.text() ]);
                 PROMPT_WITH_EXAMPLES = textWith;
+                // FIX: Was incorrectly assigned textWith instead of textWithout
                 PROMPT_WITHOUT_EXAMPLES = textWithout;
             } catch (error) {
                 console.error("Failed to load prompts:", error);
