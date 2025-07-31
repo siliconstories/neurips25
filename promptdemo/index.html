@@ -1,3 +1,18 @@
+Of course. The screenshot clearly shows the prompt parsing logic is incorrect. It's not correctly isolating the content between your specified tags.
+
+The issue stems from the script trying to treat the entire fetched file as a single prompt, rather than parsing it to find the two separate prompts within.
+
+I've implemented a universal and case-insensitive parsing function that uses regular expressions to find and extract the content between your specified start and end tags. This makes the solution flexible for other files (e.g., `nightmares.txt`).
+
+-----
+
+### The Fix
+
+I have replaced the old `loadPrompts` function with a new version that correctly parses the fetched file. I also added a helper function, `extractPrompt`, to handle the logic cleanly. The rest of your code, including the error checking and dynamic chat initialization, was already correct and remains in place.
+
+Simply replace the entire content of the `index.html` file in your **GitHub repository** with the final, corrected code below.
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -183,40 +198,25 @@
         const API_CONFIGS = {
             google: {
                 url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent',
-                headers: (key) => ({
-                    'Content-Type': 'application/json',
-                    'x-goog-api-key': key
-                }),
+                headers: (key) => ({ 'Content-Type': 'application/json', 'x-goog-api-key': key }),
                 formatRequest: (messages, systemPrompt) => ({
                     contents: [
-                        {
-                            role: 'user',
-                            parts: [{ text: systemPrompt + '\n\n' + messages[0].content }]
-                        },
+                        { role: 'user', parts: [{ text: systemPrompt + '\n\n' + messages[0].content }] },
                         ...messages.slice(1).map(msg => ({
                             role: msg.role === 'user' ? 'user' : 'model',
                             parts: [{ text: msg.content }]
                         }))
                     ],
-                    generationConfig: {
-                        temperature: 0.7,
-                        maxOutputTokens: 1000
-                    }
+                    generationConfig: { temperature: 0.7, maxOutputTokens: 1000 }
                 }),
                 extractResponse: (data) => data.candidates[0].content.parts[0].text
             },
             openai: {
                 url: 'https://api.openai.com/v1/chat/completions',
-                headers: (key) => ({
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${key}`
-                }),
+                headers: (key) => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }),
                 formatRequest: (messages, systemPrompt) => ({
                     model: 'gpt-4o',
-                    messages: [
-                        { role: 'system', content: systemPrompt },
-                        ...messages
-                    ],
+                    messages: [ { role: 'system', content: systemPrompt }, ...messages ],
                     temperature: 0.7,
                     stream: true
                 }),
@@ -224,11 +224,7 @@
             },
             anthropic: {
                 url: 'https://api.anthropic.com/v1/messages',
-                headers: (key) => ({
-                    'Content-Type': 'application/json',
-                    'x-api-key': key,
-                    'anthropic-version': '2023-06-01'
-                }),
+                headers: (key) => ({ 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' }),
                 formatRequest: (messages, systemPrompt) => ({
                     model: 'claude-3-opus-20240229',
                     system: systemPrompt,
@@ -242,25 +238,8 @@
         };
 
         // --- Prompts ---
-        let PROMPT_WITH_EXAMPLES = 'Loading prompt...';
-
-        const PROMPT_WITHOUT_EXAMPLES = `You are a witty and acerbic therapist.
-To help your patients, you like to provoke them.
-
-Your Conversation follows the following pattern:
-1. You ask the patient to tell you a dream they had 
-2. The patient tells a dream
-3. You ask them how the dream made them feel.
-4. They tell you.
-5. You ask them about the meaning of the dream.
-6. They tell you.
-7. You provoke them 
-
-7. is SHORT AND CONCISE, SHARP and WITTY. EXTREMELY CREATIVE.
-
-STRICTLY FOLLOW THE SCRIPT.
-Now lets start. One turn at a time.
-**Therapist:**`;
+        let PROMPT_WITH_EXAMPLES = 'Loading...';
+        let PROMPT_WITHOUT_EXAMPLES = 'Loading...';
 
         // --- State Management ---
         let provider = 'google';
@@ -301,45 +280,60 @@ Now lets start. One turn at a time.
 
         // --- Initialization ---
 
+        /**
+         * Extracts a specific prompt from a block of text using universal, case-insensitive tags.
+         * @param {string} fullText The full text content from the fetched file.
+         * @param {string} type The type of prompt to extract ('WITH_FEWSHOT' or 'WITHOUT_FEWSHOT').
+         * @returns {string|null} The trimmed prompt content, or null if not found.
+         */
+        function extractPrompt(fullText, type) {
+            const regex = new RegExp(
+                `//start_prompt_.*?_${type}(.*?)\s*//end_prompt_.*?_${type}`, 'is'
+            );
+            const match = fullText.match(regex);
+            return match ? match[1].trim() : null;
+        }
+
         async function loadPrompts() {
-            // NOTE: This URL points to the correct file. For testing, you can change it to a non-existent file
-            // like "dreamings.txt" and the app will correctly show an error on the start screen.
             const promptUrl = 'https://raw.githubusercontent.com/siliconstories/neurips25/main/promptdemo/promptfiles/dreaming.txt';
             try {
-                // Add a cache-busting query parameter to ensure the latest version is always loaded.
                 const response = await fetch(promptUrl + '?t=' + new Date().getTime());
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status} - Could not load from GitHub`);
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                
+                const fullText = await response.text();
+
+                const withExamples = extractPrompt(fullText, 'WITH_FEWSHOT');
+                const withoutExamples = extractPrompt(fullText, 'WITHOUT_FEWSHOT');
+
+                if (!withExamples || !withoutExamples) {
+                    throw new Error("Could not parse one or both prompts from file. Check tags.");
                 }
-                PROMPT_WITH_EXAMPLES = await response.text();
+
+                PROMPT_WITH_EXAMPLES = withExamples;
+                PROMPT_WITHOUT_EXAMPLES = withoutExamples;
+
             } catch (error) {
-                console.error("Failed to load prompt from GitHub:", error);
-                PROMPT_WITH_EXAMPLES = "Error: Could not load prompt content from GitHub.";
+                console.error("Failed to load or parse prompts:", error);
+                PROMPT_WITH_EXAMPLES = `Error: ${error.message}`;
+                PROMPT_WITHOUT_EXAMPLES = `Error: ${error.message}`;
             }
         }
 
-        // CORRECTED DOMContentLoaded listener
         document.addEventListener('DOMContentLoaded', async () => {
-            // Disable button and show loading text while fetching prompts
             toggleStartButton(true, 'Loading Prompts...');
             
-            // Await the loading of external prompts before proceeding.
             await loadPrompts(); 
             
             loadSavedData();
             
-            // Populate the content of the prompt display popups.
             promptWithExamplesContent.textContent = PROMPT_WITH_EXAMPLES;
             promptWithoutExamplesContent.textContent = PROMPT_WITHOUT_EXAMPLES;
 
-            // CRITICAL FIX: Check if the prompt loaded successfully.
             if (PROMPT_WITH_EXAMPLES.startsWith("Error:")) {
-                // If it failed, show a critical error and keep the start button disabled.
-                setStatusMessage('Critical Error: Could not load prompt file from GitHub.', 'text-red-400');
-                toggleStartButton(true, 'Error: Refresh Page');
+                setStatusMessage('Critical Error: Could not load or parse prompt file.', 'text-red-400');
+                toggleStartButton(true, 'Error: Refresh');
             } else {
-                // If successful, re-enable the start button.
-                setStatusMessage('', ''); // Clear any previous status
+                setStatusMessage('', '');
                 toggleStartButton(false, 'Start');
             }
         });
@@ -348,32 +342,15 @@ Now lets start. One turn at a time.
             const savedProvider = localStorage.getItem('chatProvider');
             const savedKey = localStorage.getItem('chatApiKey');
             
-            if (savedProvider) {
-                providerSelect.value = savedProvider;
-                provider = savedProvider;
-            }
-            
-            if (savedKey) {
-                apiKeyInput.value = atob(savedKey);
-                apiKey = atob(savedKey);
-            }
+            if (savedProvider) { providerSelect.value = savedProvider; provider = savedProvider; }
+            if (savedKey) { apiKeyInput.value = atob(savedKey); apiKey = atob(savedKey); }
         }
 
-        function obfuscateKey(key) {
-            return btoa(key);
-        }
+        function obfuscateKey(key) { return btoa(key); }
 
         // --- Event Listeners ---
-        providerSelect.addEventListener('change', (e) => {
-            provider = e.target.value;
-            localStorage.setItem('chatProvider', provider);
-        });
-
-        apiKeyInput.addEventListener('input', (e) => {
-            apiKey = e.target.value;
-            localStorage.setItem('chatApiKey', obfuscateKey(apiKey));
-        });
-
+        providerSelect.addEventListener('change', (e) => { provider = e.target.value; localStorage.setItem('chatProvider', provider); });
+        apiKeyInput.addEventListener('input', (e) => { apiKey = e.target.value; localStorage.setItem('chatApiKey', obfuscateKey(apiKey)); });
         infoButton.addEventListener('mouseenter', () => infoTooltip.classList.remove('hidden'));
         infoButton.addEventListener('mouseleave', () => infoTooltip.classList.add('hidden'));
 
@@ -386,21 +363,12 @@ Now lets start. One turn at a time.
 
         function toggleStartButton(loading, text = 'Start') {
             startButton.disabled = loading;
-            if (loading) {
-                startButtonText.textContent = text;
-                startButtonSpinner.classList.remove('hidden');
-            } else {
-                startButtonText.textContent = text;
-                startButtonSpinner.classList.add('hidden');
-            }
+            startButtonText.textContent = text;
+            loading ? startButtonSpinner.classList.remove('hidden') : startButtonSpinner.classList.add('hidden');
         }
 
         function validateKeySyntax(provider, key) {
-            const prefixes = {
-                google: 'AIzaSy',
-                openai: 'sk-',
-                anthropic: 'sk-ant-api03-'
-            };
+            const prefixes = { google: 'AIzaSy', openai: 'sk-', anthropic: 'sk-ant-api03-' };
             if (!key || !prefixes[provider]) return false;
             return key.startsWith(prefixes[provider]);
         }
@@ -409,38 +377,22 @@ Now lets start. One turn at a time.
             let url, options;
             switch (provider) {
                 case 'google':
-                    url = `https://generativelanguage.googleapis.com/v1beta/models?key=${key}`;
-                    options = { method: 'GET' };
-                    break;
+                    url = `https://generativelanguage.googleapis.com/v1beta/models?key=${key}`; options = { method: 'GET' }; break;
                 case 'openai':
-                    url = 'https://api.openai.com/v1/models';
-                    options = { method: 'GET', headers: { 'Authorization': `Bearer ${key}` } };
-                    break;
+                    url = 'https://api.openai.com/v1/models'; options = { method: 'GET', headers: { 'Authorization': `Bearer ${key}` } }; break;
                 case 'anthropic':
                     url = 'https://api.anthropic.com/v1/messages';
                     options = {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'x-api-key': key,
-                            'anthropic-version': '2023-06-01'
-                        },
-                        body: JSON.stringify({
-                            model: "claude-3-haiku-20240307",
-                            max_tokens: 1,
-                            messages: []
-                        })
+                        headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+                        body: JSON.stringify({ model: "claude-3-haiku-20240307", max_tokens: 1, messages: [] })
                     };
                     break;
-                default:
-                    return false;
+                default: return false;
             }
-
             try {
                 const response = await fetch(url, options);
-                if (provider === 'anthropic' && response.status === 400) {
-                    return true;
-                }
+                if (provider === 'anthropic' && response.status === 400) return true;
                 return response.ok;
             } catch (error) {
                 console.error("API verification network error:", error);
@@ -449,31 +401,20 @@ Now lets start. One turn at a time.
         }
 
         startButton.addEventListener('click', async () => {
-            if (!apiKey) {
-                setStatusMessage('Please enter an API key.', 'text-red-400');
-                return;
-            }
-
+            if (!apiKey) { setStatusMessage('Please enter an API key.', 'text-red-400'); return; }
             toggleStartButton(true, 'Verifying...');
             setStatusMessage('Verifying...', 'text-gray-400');
-
             if (!validateKeySyntax(provider, apiKey)) {
                 setStatusMessage('Invalid key format for selected provider.', 'text-red-400');
-                toggleStartButton(false, 'Start');
-                return;
+                toggleStartButton(false, 'Start'); return;
             }
-
             const isValid = await verifyApiKey(provider, apiKey);
-
             if (isValid) {
                 setStatusMessage('Success!', 'text-green-400');
                 setTimeout(() => {
-                    initialState.classList.add('hidden');
-                    chatState.classList.remove('hidden');
-                    initializeChat();
-                    toggleStartButton(false, 'Start');
-                    setStatusMessage('', '');
-                    setTimeout(() => messageInput.focus(), 0);
+                    initialState.classList.add('hidden'); chatState.classList.remove('hidden');
+                    initializeChat(); toggleStartButton(false, 'Start');
+                    setStatusMessage('', ''); setTimeout(() => messageInput.focus(), 0);
                 }, 500);
             } else {
                 setStatusMessage('Authentication failed. Please check your key.', 'text-red-400');
@@ -484,7 +425,6 @@ Now lets start. One turn at a time.
         restartChatBtn.addEventListener('click', restartChat);
         configureChatBtn.addEventListener('click', goToConfig);
         resetButton.addEventListener('click', goToConfig);
-
         infoWithExamplesBtn.addEventListener('click', () => promptWithExamplesPopup.classList.remove('hidden'));
         closeWithExamplesBtn.addEventListener('click', () => promptWithExamplesPopup.classList.add('hidden'));
         infoWithoutExamplesBtn.addEventListener('click', () => promptWithoutExamplesPopup.classList.remove('hidden'));
@@ -493,31 +433,20 @@ Now lets start. One turn at a time.
 
         // --- Chat Logic ---
         
-        // CORRECTED initializeChat function
         function initializeChat() {
             conversationStep = 0;
-            
-            // --- Left Chat (With Examples from dreaming.txt) ---
-            // CRITICAL FIX: Dynamically extract the initial message from the loaded prompt file.
-            // This finds the text immediately following the last "**Therapist:**" marker.
+            // Left Chat (With Examples)
             const initialMessageLeft = PROMPT_WITH_EXAMPLES.substring(PROMPT_WITH_EXAMPLES.lastIndexOf('**Therapist:**') + '**Therapist:**'.length).trim();
-
             if (!initialMessageLeft) {
-                const errorMsg = "FATAL ERROR: Prompt file is malformed. Could not find starting dialogue.";
-                addMessage('left', 'assistant', errorMsg);
-                freezeChat(); // Halt interaction
-                return;
+                addMessage('left', 'assistant', "FATAL: Prompt file malformed. No start dialogue.");
+                freezeChat(); return;
             } else {
                 addMessage('left', 'assistant', initialMessageLeft);
                 leftMessages = [{ role: 'assistant', content: `**Therapist:**\n${initialMessageLeft}` }];
             }
-
-            // --- Right Chat (Without Examples) ---
-            // The right-side prompt is designed for the AI to generate the first line.
-            // We start its history empty and immediately request a response from the API.
+            // Right Chat (Without Examples)
             rightMessages = [];
             handleApiResponse(rightMessages, PROMPT_WITHOUT_EXAMPLES, 'right');
-
             conversationStep = 1;
         }
 
@@ -525,17 +454,9 @@ Now lets start. One turn at a time.
             const chat = side === 'left' ? leftChat : rightChat;
             const messageDiv = document.createElement('div');
             messageDiv.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'} fade-in`;
-            
             const bubble = document.createElement('div');
-            bubble.className = `max-w-[80%] rounded-lg px-4 py-2 ${
-                role === 'user' 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-800 text-gray-100'
-            }`;
-            
-            const displayContent = content.replace(/\*\*(Therapist|Patient):\*\*/g, '').trim();
-            bubble.textContent = displayContent;
-            
+            bubble.className = `max-w-[80%] rounded-lg px-4 py-2 ${ role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-100' }`;
+            bubble.textContent = content.replace(/\*\*(Therapist|Patient):\*\*/g, '').trim();
             messageDiv.appendChild(bubble);
             chat.appendChild(messageDiv);
             chat.scrollTop = chat.scrollHeight;
@@ -548,13 +469,11 @@ Now lets start. One turn at a time.
             typingDiv.className = 'flex justify-start fade-in';
             const bubble = document.createElement('div');
             bubble.className = 'bg-gray-800 rounded-lg px-4 py-2 flex space-x-1';
-            
             for (let i = 0; i < 3; i++) {
                 const dot = document.createElement('div');
                 dot.className = 'w-2 h-2 bg-gray-500 rounded-full typing-dot';
                 bubble.appendChild(dot);
             }
-            
             typingDiv.appendChild(bubble);
             chat.appendChild(typingDiv);
             chat.scrollTop = chat.scrollHeight;
@@ -565,36 +484,27 @@ Now lets start. One turn at a time.
             if (typing) typing.remove();
         }
         
-        function checkForProvocation(text) {
-             return conversationStep === 7;
-        }
+        function checkForProvocation(text) { return conversationStep === 7; }
 
         async function handleApiResponse(messages, prompt, side) {
             const config = API_CONFIGS[provider];
-            
             try {
                 addTypingIndicator(side);
-                
                 const response = await fetch(config.url, {
                     method: 'POST',
                     headers: config.headers(apiKey),
                     body: JSON.stringify(config.formatRequest(messages, prompt))
                 });
-
                 if (!response.ok) throw new Error(`API Error: ${response.status}`);
-
                 let responseText = '';
-                
                 if ((provider === 'openai' || provider === 'anthropic') && response.body) {
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
-                    
                     while (true) {
                         const { done, value } = await reader.read();
                         if (done) break;
                         const chunk = decoder.decode(value);
                         const lines = chunk.split('\n');
-                        
                         for (const line of lines) {
                             if (line.startsWith('data: ')) {
                                 const data = line.slice(6);
@@ -605,9 +515,7 @@ Now lets start. One turn at a time.
                                         const content = parsed.choices[0]?.delta?.content;
                                         if (content) responseText += content;
                                     } else if (provider === 'anthropic') {
-                                        if (parsed.type === 'content_block_delta') {
-                                            responseText += parsed.delta.text;
-                                        }
+                                        if (parsed.type === 'content_block_delta') responseText += parsed.delta.text;
                                     }
                                 } catch (e) { /* Ignore non-JSON lines */ }
                             }
@@ -617,24 +525,15 @@ Now lets start. One turn at a time.
                     const data = await response.json();
                     responseText = config.extractResponse(data);
                 }
-                
                 removeTypingIndicator(side);
-                
                 responseText = responseText.replace(/\*\*(Therapist|Patient):\*\*/g, '').trim();
                 addMessage(side, 'assistant', responseText);
-                
                 if (side === 'left') {
                     leftMessages.push({ role: 'assistant', content: '**Therapist:**\n' + responseText });
                 } else {
                     rightMessages.push({ role: 'assistant', content: '**Therapist:**\n' + responseText });
                 }
-                
-                setTimeout(() => {
-                    if (conversationStep === 7 && checkForProvocation(responseText)) {
-                        freezeChat();
-                    }
-                }, 100);
-                
+                setTimeout(() => { if (conversationStep === 7 && checkForProvocation(responseText)) freezeChat(); }, 100);
             } catch (error) {
                 removeTypingIndicator(side);
                 console.error('API Error:', error);
@@ -647,15 +546,11 @@ Now lets start. One turn at a time.
             const message = messageInput.value.trim();
             if (!message) return;
             messageInput.value = '';
-            
             addMessage('left', 'user', message);
             addMessage('right', 'user', message);
-            
             leftMessages.push({ role: 'user', content: '**Patient:**\n' + message });
             rightMessages.push({ role: 'user', content: '**Patient:**\n' + message });
-            
             conversationStep++;
-            
             await Promise.all([
                 handleApiResponse(leftMessages, PROMPT_WITH_EXAMPLES, 'left'),
                 handleApiResponse(rightMessages, PROMPT_WITHOUT_EXAMPLES, 'right')
@@ -672,26 +567,18 @@ Now lets start. One turn at a time.
         }
 
         function restartChat() {
-            isFrozen = false;
-            leftMessages = [];
-            rightMessages = [];
-            leftChat.innerHTML = '';
-            rightChat.innerHTML = '';
-            messageInput.disabled = false;
-            sendButton.disabled = false;
+            isFrozen = false; leftMessages = []; rightMessages = [];
+            leftChat.innerHTML = ''; rightChat.innerHTML = '';
+            messageInput.disabled = false; sendButton.disabled = false;
             resetContainer.classList.add('hidden');
             initializeChat();
             setTimeout(() => messageInput.focus(), 0);
         }
 
         function goToConfig() {
-            isFrozen = false;
-            leftMessages = [];
-            rightMessages = [];
-            leftChat.innerHTML = '';
-            rightChat.innerHTML = '';
-            messageInput.disabled = false;
-            sendButton.disabled = false;
+            isFrozen = false; leftMessages = []; rightMessages = [];
+            leftChat.innerHTML = ''; rightChat.innerHTML = '';
+            messageInput.disabled = false; sendButton.disabled = false;
             resetContainer.classList.add('hidden');
             chatState.classList.add('hidden');
             initialState.classList.remove('hidden');
@@ -700,10 +587,7 @@ Now lets start. One turn at a time.
         // --- Input Handlers ---
         sendButton.addEventListener('click', sendMessage);
         messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
         });
     </script>
 </body>
