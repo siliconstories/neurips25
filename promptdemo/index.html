@@ -320,7 +320,7 @@ Now lets start. One turn at a time.
 // index.html on GITHUB
 
 async function loadPrompts() {
-    const promptUrl = 'https://raw.githubusercontent.com/siliconstories/neurips25/refs/heads/main/promptdemo/promptfiles/dreaming.txt';
+    const promptUrl = 'https://raw.githubusercontent.com/siliconstories/neurips25/refs/heads/main/promptdemo/promptfiles/dreamings.txt';
     try {
         // FIXED: Added a cache-busting query parameter.
         const response = await fetch(promptUrl + '?t=' + new Date().getTime());
