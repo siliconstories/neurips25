@@ -195,7 +195,6 @@
     <script>
         // --- Core Configuration ---
 
-        // API configurations for each provider. This modular structure allows for easy extension.
         const API_CONFIGS = {
             google: {
                 url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent',
@@ -204,13 +203,11 @@
                     'x-goog-api-key': key
                 }),
                 formatRequest: (messages, systemPrompt) => ({
-                    // Gemini API prefers the system prompt combined with the first user message.
                     contents: [
                         {
                             role: 'user',
                             parts: [{ text: systemPrompt + '\n\n' + messages[0].content }]
                         },
-                        // Map subsequent messages to the correct role.
                         ...messages.slice(1).map(msg => ({
                             role: msg.role === 'user' ? 'user' : 'model',
                             parts: [{ text: msg.content }]
@@ -236,7 +233,7 @@
                         ...messages
                     ],
                     temperature: 0.7,
-                    stream: true // Enable streaming for real-time responses
+                    stream: true
                 }),
                 extractResponse: (data) => data.choices[0].message.content
             },
@@ -253,17 +250,15 @@
                     messages: messages,
                     max_tokens: 1000,
                     temperature: 0.7,
-                    stream: true // Enable streaming for real-time responses
+                    stream: true
                 }),
                 extractResponse: (data) => data.content[0].text
             }
         };
 
         // --- Prompts ---
-        // REFACTORED: Initialize the prompt variable. It will be populated by fetching the external file.
-        let PROMPT_WITH_EXAMPLES = '';
+        let PROMPT_WITH_EXAMPLES = 'Loading prompt...';
 
-        // The prompt without few-shot examples remains hardcoded.
         const PROMPT_WITHOUT_EXAMPLES = `You are a witty and acerbic therapist.
 To help your patients, you like to provoke them.
 
@@ -288,7 +283,7 @@ Now lets start. One turn at a time.
         let leftMessages = [];
         let rightMessages = [];
         let conversationStep = 0;
-        let isFrozen = false; // Controls whether the chat is active or locked after provocation
+        let isFrozen = false; 
 
         // --- DOM Elements ---
         const initialState = document.getElementById('initialState');
@@ -321,30 +316,28 @@ Now lets start. One turn at a time.
 
         // --- Initialization ---
 
-        // NEW: Asynchronous function to load the prompt from an external file.
-        async function loadPrompts() {
-            try {
-                // Fetch the content of the text file.
-                const response = await fetch('promptfiles/dreaming.txt');
-                // Gracefully handle cases where the file might not be found (e.g., 404 error).
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status} - Could not load dreaming.txt`);
-                }
-                // Read the response as text and assign it to the variable.
-                PROMPT_WITH_EXAMPLES = await response.text();
-            } catch (error) {
-                // Log errors to the console for debugging and set the prompt to an error message.
-                console.error("Failed to load prompt from file:", error);
-                PROMPT_WITH_EXAMPLES = "Error: Could not load prompt content from file.";
-            }
-        }
+        // MODIFIED: Asynchronous function to load the prompt from the public GitHub repo.
+// index.html on GITHUB
 
-        // The main initialization function, now async to handle the prompt loading.
+async function loadPrompts() {
+    const promptUrl = 'https://raw.githubusercontent.com/siliconstories/neurips25/refs/heads/main/promptdemo/promptfiles/dreaming.txt';
+    try {
+        // FIXED: Added a cache-busting query parameter.
+        const response = await fetch(promptUrl + '?t=' + new Date().getTime());
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        PROMPT_WITH_EXAMPLES = await response.text();
+    } catch (error) {
+        console.error("Failed to load prompt from GitHub:", error);
+        PROMPT_WITH_EXAMPLES = "Error: Could not load prompt content from GitHub.";
+    }
+}
+
         document.addEventListener('DOMContentLoaded', async () => {
             // Await the loading of external prompts before proceeding.
             await loadPrompts(); 
             
-            // Load any saved user data from previous sessions.
             loadSavedData();
             
             // Populate the content of the prompt display popups.
@@ -362,14 +355,12 @@ Now lets start. One turn at a time.
                 provider = savedProvider;
             }
             
-            // The key is stored in base64 for simple obfuscation. We decode it here.
             if (savedKey) {
                 apiKeyInput.value = atob(savedKey);
                 apiKey = atob(savedKey);
             }
         }
 
-        // Simple base64 encoding to avoid storing the plain API key in localStorage.
         function obfuscateKey(key) {
             return btoa(key);
         }
@@ -385,19 +376,16 @@ Now lets start. One turn at a time.
             localStorage.setItem('chatApiKey', obfuscateKey(apiKey));
         });
 
-        // Listeners for showing and hiding the API key info tooltip.
         infoButton.addEventListener('mouseenter', () => infoTooltip.classList.remove('hidden'));
         infoButton.addEventListener('mouseleave', () => infoTooltip.classList.add('hidden'));
 
         // --- API Key Validation and Start ---
         
-        // Helper to display status messages below the API key input.
         function setStatusMessage(message, colorClass) {
             apiKeyStatus.textContent = message;
             apiKeyStatus.className = `text-xs text-center mt-2 h-4 ${colorClass}`;
         }
 
-        // Controls the visual state of the start button (e.g., showing a spinner).
         function toggleStartButton(loading, text = 'Start') {
             startButton.disabled = loading;
             if (loading) {
@@ -409,7 +397,6 @@ Now lets start. One turn at a time.
             }
         }
 
-        // A simple check for the common prefixes of API keys to catch typos early.
         function validateKeySyntax(provider, key) {
             const prefixes = {
                 google: 'AIzaSy',
@@ -420,7 +407,6 @@ Now lets start. One turn at a time.
             return key.startsWith(prefixes[provider]);
         }
 
-        // Pings the respective provider's API to verify if the key is authentic.
         async function verifyApiKey(provider, key) {
             let url, options;
             switch (provider) {
@@ -433,9 +419,6 @@ Now lets start. One turn at a time.
                     options = { method: 'GET', headers: { 'Authorization': `Bearer ${key}` } };
                     break;
                 case 'anthropic':
-                    // Anthropic doesn't have a simple validation endpoint. We send a malformed
-                    // but authenticated request. A 400 (Bad Request) means auth passed, while a 
-                    // 401/403 (Unauthorized/Forbidden) means the key is bad.
                     url = 'https://api.anthropic.com/v1/messages';
                     options = {
                         method: 'POST',
@@ -447,7 +430,7 @@ Now lets start. One turn at a time.
                         body: JSON.stringify({
                             model: "claude-3-haiku-20240307",
                             max_tokens: 1,
-                            messages: [] // This will cause a 400, but only if auth succeeds
+                            messages: []
                         })
                     };
                     break;
@@ -457,7 +440,6 @@ Now lets start. One turn at a time.
 
             try {
                 const response = await fetch(url, options);
-                // For Anthropic, a 400 response is a successful validation for our purpose.
                 if (provider === 'anthropic' && response.status === 400) {
                     return true;
                 }
@@ -468,7 +450,6 @@ Now lets start. One turn at a time.
             }
         }
 
-        // Main function for the "Start" button click.
         startButton.addEventListener('click', async () => {
             if (!apiKey) {
                 setStatusMessage('Please enter an API key.', 'text-red-400');
@@ -494,7 +475,7 @@ Now lets start. One turn at a time.
                     initializeChat();
                     toggleStartButton(false);
                     setStatusMessage('', '');
-                    setTimeout(() => messageInput.focus(), 0); // Focus the input field
+                    setTimeout(() => messageInput.focus(), 0);
                 }, 500);
             } else {
                 setStatusMessage('Authentication failed. Please check your key.', 'text-red-400');
@@ -502,12 +483,10 @@ Now lets start. One turn at a time.
             }
         });
 
-        // Chat navigation button listeners.
         restartChatBtn.addEventListener('click', restartChat);
         configureChatBtn.addEventListener('click', goToConfig);
-        resetButton.addEventListener('click', goToConfig); // The modal reset button also goes to config
+        resetButton.addEventListener('click', goToConfig);
 
-        // Prompt info popup listeners.
         infoWithExamplesBtn.addEventListener('click', () => promptWithExamplesPopup.classList.remove('hidden'));
         closeWithExamplesBtn.addEventListener('click', () => promptWithExamplesPopup.classList.add('hidden'));
         infoWithoutExamplesBtn.addEventListener('click', () => promptWithoutExamplesPopup.classList.remove('hidden'));
@@ -516,20 +495,17 @@ Now lets start. One turn at a time.
 
         // --- Chat Logic ---
         
-        // Sets up the chat windows with the initial therapist message.
         function initializeChat() {
             conversationStep = 0;
             const initialMessage = "Tell me about a recent dream you had.";
             addMessage('left', 'assistant', initialMessage);
             addMessage('right', 'assistant', initialMessage);
             
-            // Initialize message history for both API calls.
             leftMessages = [{ role: 'assistant', content: '**Therapist:**\n' + initialMessage }];
             rightMessages = [{ role: 'assistant', content: '**Therapist:**\n' + initialMessage }];
             conversationStep = 1;
         }
 
-        // Dynamically creates and adds a message bubble to the specified chat window.
         function addMessage(side, role, content) {
             const chat = side === 'left' ? leftChat : rightChat;
             const messageDiv = document.createElement('div');
@@ -542,16 +518,14 @@ Now lets start. One turn at a time.
                     : 'bg-gray-800 text-gray-100'
             }`;
             
-            // Clean up role identifiers from the text before displaying.
             const displayContent = content.replace(/\*\*(Therapist|Patient):\*\*/g, '').trim();
             bubble.textContent = displayContent;
             
             messageDiv.appendChild(bubble);
             chat.appendChild(messageDiv);
-            chat.scrollTop = chat.scrollHeight; // Auto-scroll to the bottom
+            chat.scrollTop = chat.scrollHeight;
         }
 
-        // Adds a "typing..." indicator to the UI.
         function addTypingIndicator(side) {
             const chat = side === 'left' ? leftChat : rightChat;
             const typingDiv = document.createElement('div');
@@ -571,18 +545,15 @@ Now lets start. One turn at a time.
             chat.scrollTop = chat.scrollHeight;
         }
 
-        // Removes the "typing..." indicator.
         function removeTypingIndicator(side) {
             const typing = document.getElementById(`${side}Typing`);
             if (typing) typing.remove();
         }
         
-        // Checks if the conversation has reached the point of provocation.
         function checkForProvocation(text) {
              return conversationStep === 7;
         }
 
-        // Handles the entire API request/response cycle for one chat pane.
         async function handleApiResponse(messages, prompt, side) {
             const config = API_CONFIGS[provider];
             
@@ -599,7 +570,6 @@ Now lets start. One turn at a time.
 
                 let responseText = '';
                 
-                // Handle streaming responses from OpenAI and Anthropic for a better UX.
                 if ((provider === 'openai' || provider === 'anthropic') && response.body) {
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
@@ -624,12 +594,11 @@ Now lets start. One turn at a time.
                                             responseText += parsed.delta.text;
                                         }
                                     }
-                                } catch (e) { /* Ignore non-JSON lines common in streams */ }
+                                } catch (e) { /* Ignore non-JSON lines */ }
                             }
                         }
                     }
                 } else {
-                    // Handle non-streaming response from Google.
                     const data = await response.json();
                     responseText = config.extractResponse(data);
                 }
@@ -639,14 +608,12 @@ Now lets start. One turn at a time.
                 responseText = responseText.replace(/\*\*(Therapist|Patient):\*\*/g, '').trim();
                 addMessage(side, 'assistant', responseText);
                 
-                // Update the message history for the next turn.
                 if (side === 'left') {
                     leftMessages.push({ role: 'assistant', content: '**Therapist:**\n' + responseText });
                 } else {
                     rightMessages.push({ role: 'assistant', content: '**Therapist:**\n' + responseText });
                 }
                 
-                // After the response is received, check if it's the provocation step.
                 setTimeout(() => {
                     if (conversationStep === 7 && checkForProvocation(responseText)) {
                         freezeChat();
@@ -660,14 +627,12 @@ Now lets start. One turn at a time.
             }
         }
 
-        // Triggered when the user sends a message.
         async function sendMessage() {
             if (isFrozen) return;
             const message = messageInput.value.trim();
             if (!message) return;
             messageInput.value = '';
             
-            // Add user's message to both panes and their respective histories.
             addMessage('left', 'user', message);
             addMessage('right', 'user', message);
             
@@ -676,7 +641,6 @@ Now lets start. One turn at a time.
             
             conversationStep++;
             
-            // Send requests to both APIs in parallel.
             await Promise.all([
                 handleApiResponse(leftMessages, PROMPT_WITH_EXAMPLES, 'left'),
                 handleApiResponse(rightMessages, PROMPT_WITHOUT_EXAMPLES, 'right')
@@ -685,7 +649,6 @@ Now lets start. One turn at a time.
 
         // --- State Management Functions ---
         
-        // Freezes the chat input and shows the reset modal.
         function freezeChat() {
             isFrozen = true;
             resetContainer.classList.remove('hidden');
@@ -693,7 +656,6 @@ Now lets start. One turn at a time.
             sendButton.disabled = true;
         }
 
-        // Resets the chat to its initial state without returning to the config screen.
         function restartChat() {
             isFrozen = false;
             leftMessages = [];
@@ -704,10 +666,9 @@ Now lets start. One turn at a time.
             sendButton.disabled = false;
             resetContainer.classList.add('hidden');
             initializeChat();
-            setTimeout(() => messageInput.focus(), 0); // Re-focus the input
+            setTimeout(() => messageInput.focus(), 0);
         }
 
-        // Returns the user to the initial configuration screen.
         function goToConfig() {
             isFrozen = false;
             leftMessages = [];
@@ -725,11 +686,10 @@ Now lets start. One turn at a time.
         sendButton.addEventListener('click', sendMessage);
         messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault(); // Prevent new line on Enter
+                e.preventDefault();
                 sendMessage();
             }
         });
     </script>
 </body>
 </html>
-```
