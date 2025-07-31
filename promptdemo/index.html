@@ -24,14 +24,25 @@
     </style>
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen flex flex-col items-center justify-center p-4 font-sans">
-    <div id="app" class="w-full max-w-6xl flex-grow flex flex-col justify-center">
+    
+    <!-- Initial Page Loader -->
+    <div id="initialLoader" class="fixed inset-0 bg-gray-950 flex flex-col items-center justify-center z-[100]">
+        <div class="text-center">
+            <p class="text-lg text-gray-300 mb-2">Loading from GitHub...</p>
+            <a href="https://github.com/siliconstories/neurips25" target="_blank" rel="noopener noreferrer" class="text-xs text-gray-500 hover:text-gray-300 transition-colors">
+                ref: siliconstories/neurips25
+            </a>
+        </div>
+    </div>
+
+    <div id="app" class="w-full max-w-6xl flex-grow flex-col justify-center hidden">
         <!-- Initial Configuration State -->
         <div id="initialState" class="max-w-md mx-auto space-y-6 fade-in w-full">
             <h1 class="text-3xl font-light text-center mb-8 text-gray-100">Few-shot Dialogue: Prompt Example</h1>
             <div class="space-y-2">
                 <label class="text-sm text-gray-400">Select Provider</label>
                 <select id="providerSelect" class="w-full bg-gray-900 border border-gray-800 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors">
-                    <option value="google">Google (Gemini 1.5 Pro)</option>
+                    <option value="google">Google (Gemini 2.5 Pro)</option>
                     <option value="openai">OpenAI (ChatGPT-4o)</option>
                     <option value="anthropic">Anthropic (Claude Opus)</option>
                 </select>
@@ -99,7 +110,7 @@
     </div>
     
     <!-- Footer -->
-    <footer class="text-center text-xs text-gray-500 py-4 space-y-1">
+    <footer class="text-center text-xs text-gray-500 py-4 space-y-1 hidden">
         <p><a href="https://neurips.cc/Conferences/2025/" target="_blank" rel="noopener noreferrer" class="hover:text-gray-300 transition-colors">NeurIPS 2025</a> Art Track Submission</p>
         <p>Website ingested live from <a href="https://github.com/siliconstories/neurips25/tree/main/promptdemo" target="_blank" rel="noopener noreferrer" class="hover:text-gray-300 transition-colors">GitHub</a></p>
     </footer>
@@ -124,7 +135,7 @@
         
         const API_CONFIGS = {
             google: {
-                url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent',
+                url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-latest:generateContent',
                 headers: (key) => ({ 'Content-Type': 'application/json', 'x-goog-api-key': key }),
                 formatRequest: (messages, systemPrompt) => ({
                     systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -158,7 +169,7 @@
         let provider = 'google'; let apiKey = ''; let leftMessages = []; let rightMessages = [];
 
         // --- DOM Elements ---
-        const initialState = document.getElementById('initialState'); const chatState = document.getElementById('chatState'); const providerSelect = document.getElementById('providerSelect'); const apiKeyInput = document.getElementById('apiKeyInput'); const startButton = document.getElementById('startButton'); const startButtonText = document.getElementById('startButtonText'); const startButtonSpinner = document.getElementById('startButtonSpinner'); const apiKeyStatus = document.getElementById('apiKeyStatus'); const messageInput = document.getElementById('messageInput'); const sendButton = document.getElementById('sendButton'); const leftChat = document.getElementById('leftChat'); const rightChat = document.getElementById('rightChat'); const infoButton = document.getElementById('infoButton'); const infoTooltip = document.getElementById('infoTooltip'); const restartChatBtn = document.getElementById('restartChatBtn'); const configureChatBtn = document.getElementById('configureChatBtn'); const promptWithExamplesPopup = document.getElementById('promptWithExamplesPopup'); const promptWithoutExamplesPopup = document.getElementById('promptWithoutExamplesPopup'); const infoWithExamplesBtn = document.getElementById('infoWithExamplesBtn'); const infoWithoutExamplesBtn = document.getElementById('infoWithoutExamplesBtn'); const closeWithExamplesBtn = document.getElementById('closeWithExamplesBtn'); const closeWithoutExamplesBtn = document.getElementById('closeWithoutExamplesBtn'); const promptWithExamplesContent = document.getElementById('promptWithExamplesContent'); const promptWithoutExamplesContent = document.getElementById('promptWithoutExamplesContent'); const sceneTitle = document.getElementById('sceneTitle');
+        const initialLoader = document.getElementById('initialLoader'); const appContainer = document.getElementById('app'); const footer = document.querySelector('footer'); const initialState = document.getElementById('initialState'); const chatState = document.getElementById('chatState'); const providerSelect = document.getElementById('providerSelect'); const apiKeyInput = document.getElementById('apiKeyInput'); const startButton = document.getElementById('startButton'); const startButtonText = document.getElementById('startButtonText'); const startButtonSpinner = document.getElementById('startButtonSpinner'); const apiKeyStatus = document.getElementById('apiKeyStatus'); const messageInput = document.getElementById('messageInput'); const sendButton = document.getElementById('sendButton'); const leftChat = document.getElementById('leftChat'); const rightChat = document.getElementById('rightChat'); const infoButton = document.getElementById('infoButton'); const infoTooltip = document.getElementById('infoTooltip'); const restartChatBtn = document.getElementById('restartChatBtn'); const configureChatBtn = document.getElementById('configureChatBtn'); const promptWithExamplesPopup = document.getElementById('promptWithExamplesPopup'); const promptWithoutExamplesPopup = document.getElementById('promptWithoutExamplesPopup'); const infoWithExamplesBtn = document.getElementById('infoWithExamplesBtn'); const infoWithoutExamplesBtn = document.getElementById('infoWithoutExamplesBtn'); const closeWithExamplesBtn = document.getElementById('closeWithExamplesBtn'); const closeWithoutExamplesBtn = document.getElementById('closeWithoutExamplesBtn'); const promptWithExamplesContent = document.getElementById('promptWithExamplesContent'); const promptWithoutExamplesContent = document.getElementById('promptWithoutExamplesContent'); const sceneTitle = document.getElementById('sceneTitle');
 
         // --- Initialization ---
         async function loadPrompts() {
@@ -181,7 +192,7 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', async () => {
+        async functioninitializeApp() {
             toggleStartButton(true, 'Loading Prompts...');
             await loadPrompts(); 
             loadSavedData();
@@ -195,6 +206,25 @@
             } else {
                 setStatusMessage('', '');
                 toggleStartButton(false, 'Start');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const hasLoadedBefore = sessionStorage.getItem('hasLoadedBefore');
+
+            if (!hasLoadedBefore) {
+                setTimeout(() => {
+                    initialLoader.style.display = 'none';
+                    appContainer.style.display = 'flex';
+                    footer.style.display = 'block';
+                    initializeApp();
+                    sessionStorage.setItem('hasLoadedBefore', 'true');
+                }, 3000);
+            } else {
+                initialLoader.style.display = 'none';
+                appContainer.style.display = 'flex';
+                footer.style.display = 'block';
+                initializeApp();
             }
         });
 
@@ -257,7 +287,7 @@
             if (isValid) {
                 setStatusMessage('Success!', 'text-green-400');
                 setTimeout(() => {
-                    initialState.classList.add('hidden'); 
+                    initialState.style.display = 'none';
                     chatState.classList.add('flex'); // Use flex for chat state
                     chatState.classList.remove('hidden');
                     initializeChat(); 
@@ -296,10 +326,6 @@
 
         function removeTypingIndicator(side) { const typing = document.getElementById(`${side}Typing`); if (typing) typing.remove(); }
 
-        /**
-         * Fetches a response from the API but does NOT update the UI.
-         * Returns the response text.
-         */
         async function getApiResponse(messages, prompt) {
             const config = API_CONFIGS[provider];
             const response = await fetch(config.url, { method: 'POST', headers: config.headers(apiKey), body: JSON.stringify(config.formatRequest(messages, prompt)) });
@@ -414,7 +440,7 @@
             leftChat.innerHTML = ''; rightChat.innerHTML = '';
             chatState.classList.add('hidden');
             chatState.classList.remove('flex');
-            initialState.classList.remove('hidden');
+            initialState.style.display = 'block';
         }
     </script>
 </body>
