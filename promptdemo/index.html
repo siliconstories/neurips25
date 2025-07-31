@@ -6,17 +6,12 @@
     <title>Prompt Example</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Custom scrollbar for chat windows */
         .chat-scroll::-webkit-scrollbar { width: 6px; opacity: 0; transition: opacity 0.3s; }
         .chat-scroll:hover::-webkit-scrollbar { opacity: 1; }
         .chat-scroll::-webkit-scrollbar-track { background: transparent; }
         .chat-scroll::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
-        
-        /* Simple fade-in animation for elements */
         .fade-in { animation: fadeIn 0.5s ease-in; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        /* Typing indicator animation */
         @keyframes typing { 0% { opacity: 0.3; } 50% { opacity: 1; } 100% { opacity: 0.3; } }
         .typing-dot { animation: typing 1.4s infinite; }
         .typing-dot:nth-child(2) { animation-delay: 0.2s; }
@@ -25,17 +20,7 @@
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen flex flex-col items-center justify-center p-4 font-sans">
     
-    <!-- Initial Page Loader -->
-    <div id="initialLoader" class="fixed inset-0 bg-gray-950 flex flex-col items-center justify-center z-[100]">
-        <div class="text-center">
-            <p class="text-lg text-gray-300 mb-2">Loading from GitHub...</p>
-            <a href="https://github.com/siliconstories/neurips25" target="_blank" rel="noopener noreferrer" class="text-xs text-gray-500 hover:text-gray-300 transition-colors">
-                ref: siliconstories/neurips25
-            </a>
-        </div>
-    </div>
-
-    <div id="app" class="w-full max-w-6xl flex-grow flex-col justify-center hidden">
+    <div id="app" class="w-full max-w-6xl flex-grow flex flex-col justify-center">
         <!-- Initial Configuration State -->
         <div id="initialState" class="max-w-md mx-auto space-y-6 fade-in w-full">
             <h1 class="text-3xl font-light text-center mb-8 text-gray-100">Few-shot Dialogue: Prompt Example</h1>
@@ -77,7 +62,6 @@
                 </div>
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-grow min-h-0">
-                <!-- Left Chat: With Examples -->
                 <div class="bg-gray-900 rounded-xl border border-gray-800 flex flex-col h-[300px] lg:h-auto">
                     <div class="p-4 border-b border-gray-800 flex justify-between items-center">
                         <h2 class="font-medium text-gray-300">With Examples</h2>
@@ -87,7 +71,6 @@
                     </div>
                     <div id="leftChat" class="flex-1 overflow-y-auto p-4 space-y-4 chat-scroll"></div>
                 </div>
-                <!-- Right Chat: Without Examples -->
                 <div class="bg-gray-900 rounded-xl border border-gray-800 flex flex-col h-[300px] lg:h-auto">
                     <div class="p-4 border-b border-gray-800 flex justify-between items-center">
                         <h2 class="font-medium text-gray-300">Without Examples</h2>
@@ -109,13 +92,11 @@
         </div>
     </div>
     
-    <!-- Footer -->
-    <footer class="text-center text-xs text-gray-500 py-4 space-y-1 hidden">
+    <footer class="text-center text-xs text-gray-500 py-4 space-y-1">
         <p><a href="https://neurips.cc/Conferences/2025/" target="_blank" rel="noopener noreferrer" class="hover:text-gray-300 transition-colors">NeurIPS 2025</a> Art Track Submission</p>
         <p>Website ingested live from <a href="https://github.com/siliconstories/neurips25/tree/main/promptdemo" target="_blank" rel="noopener noreferrer" class="hover:text-gray-300 transition-colors">GitHub</a></p>
     </footer>
 
-    <!-- Prompt Info Popups -->
     <div id="promptWithExamplesPopup" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
         <div class="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
             <div class="p-4 border-b border-gray-800 flex justify-between items-center"><h3 class="text-lg font-medium">Prompt: With Examples</h3><button id="closeWithExamplesBtn" class="text-gray-500 hover:text-gray-300 text-2xl leading-none">&times;</button></div>
@@ -130,9 +111,7 @@
     </div>
 
     <script>
-        // --- Core Configuration ---
         const SCENARIO_NAME = 'dreaming';
-        
         const API_CONFIGS = {
             google: {
                 url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-latest:generateContent',
@@ -161,18 +140,27 @@
             }
         };
 
-        // --- Prompts ---
         let PROMPT_WITH_EXAMPLES = 'Loading...';
         let PROMPT_WITHOUT_EXAMPLES = 'Loading...';
+        let provider = 'google'; 
+        let apiKey = ''; 
+        let leftMessages = []; 
+        let rightMessages = [];
 
-        // --- State Management ---
-        let provider = 'google'; let apiKey = ''; let leftMessages = []; let rightMessages = [];
+        const initialState = document.getElementById('initialState'); const chatState = document.getElementById('chatState'); const providerSelect = document.getElementById('providerSelect'); const apiKeyInput = document.getElementById('apiKeyInput'); const startButton = document.getElementById('startButton'); const startButtonText = document.getElementById('startButtonText'); const startButtonSpinner = document.getElementById('startButtonSpinner'); const apiKeyStatus = document.getElementById('apiKeyStatus'); const messageInput = document.getElementById('messageInput'); const sendButton = document.getElementById('sendButton'); const leftChat = document.getElementById('leftChat'); const rightChat = document.getElementById('rightChat'); const infoButton = document.getElementById('infoButton'); const infoTooltip = document.getElementById('infoTooltip'); const restartChatBtn = document.getElementById('restartChatBtn'); const configureChatBtn = document.getElementById('configureChatBtn'); const promptWithExamplesPopup = document.getElementById('promptWithExamplesPopup'); const promptWithoutExamplesPopup = document.getElementById('promptWithoutExamplesPopup'); const infoWithExamplesBtn = document.getElementById('infoWithExamplesBtn'); const infoWithoutExamplesBtn = document.getElementById('infoWithoutExamplesBtn'); const closeWithExamplesBtn = document.getElementById('closeWithExamplesBtn'); const closeWithoutExamplesBtn = document.getElementById('closeWithoutExamplesBtn'); const promptWithExamplesContent = document.getElementById('promptWithExamplesContent'); const promptWithoutExamplesContent = document.getElementById('promptWithoutExamplesContent'); const sceneTitle = document.getElementById('sceneTitle');
 
-        // --- DOM Elements ---
-        const initialLoader = document.getElementById('initialLoader'); const appContainer = document.getElementById('app'); const footer = document.querySelector('footer'); const initialState = document.getElementById('initialState'); const chatState = document.getElementById('chatState'); const providerSelect = document.getElementById('providerSelect'); const apiKeyInput = document.getElementById('apiKeyInput'); const startButton = document.getElementById('startButton'); const startButtonText = document.getElementById('startButtonText'); const startButtonSpinner = document.getElementById('startButtonSpinner'); const apiKeyStatus = document.getElementById('apiKeyStatus'); const messageInput = document.getElementById('messageInput'); const sendButton = document.getElementById('sendButton'); const leftChat = document.getElementById('leftChat'); const rightChat = document.getElementById('rightChat'); const infoButton = document.getElementById('infoButton'); const infoTooltip = document.getElementById('infoTooltip'); const restartChatBtn = document.getElementById('restartChatBtn'); const configureChatBtn = document.getElementById('configureChatBtn'); const promptWithExamplesPopup = document.getElementById('promptWithExamplesPopup'); const promptWithoutExamplesPopup = document.getElementById('promptWithoutExamplesPopup'); const infoWithExamplesBtn = document.getElementById('infoWithExamplesBtn'); const infoWithoutExamplesBtn = document.getElementById('infoWithoutExamplesBtn'); const closeWithExamplesBtn = document.getElementById('closeWithExamplesBtn'); const closeWithoutExamplesBtn = document.getElementById('closeWithoutExamplesBtn'); const promptWithExamplesContent = document.getElementById('promptWithExamplesContent'); const promptWithoutExamplesContent = document.getElementById('promptWithoutExamplesContent'); const sceneTitle = document.getElementById('sceneTitle');
-
-        // --- Initialization ---
         async function loadPrompts() {
+            const cachedWith = sessionStorage.getItem('prompt_with_examples');
+            const cachedWithout = sessionStorage.getItem('prompt_without_examples');
+
+            if (cachedWith && cachedWithout) {
+                PROMPT_WITH_EXAMPLES = cachedWith;
+                PROMPT_WITHOUT_EXAMPLES = cachedWithout;
+                sessionStorage.removeItem('prompt_with_examples');
+                sessionStorage.removeItem('prompt_without_examples');
+                return;
+            }
+            
             const baseUrl = `https://raw.githubusercontent.com/siliconstories/neurips25/main/promptdemo/promptfiles/`;
             const cacheBuster = `?t=${new Date().getTime()}`;
             try {
@@ -192,7 +180,7 @@
             }
         }
 
-        async functioninitializeApp() {
+        async function initializeApp() {
             toggleStartButton(true, 'Loading Prompts...');
             await loadPrompts(); 
             loadSavedData();
@@ -209,24 +197,7 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const hasLoadedBefore = sessionStorage.getItem('hasLoadedBefore');
-
-            if (!hasLoadedBefore) {
-                setTimeout(() => {
-                    initialLoader.style.display = 'none';
-                    appContainer.style.display = 'flex';
-                    footer.style.display = 'block';
-                    initializeApp();
-                    sessionStorage.setItem('hasLoadedBefore', 'true');
-                }, 3000);
-            } else {
-                initialLoader.style.display = 'none';
-                appContainer.style.display = 'flex';
-                footer.style.display = 'block';
-                initializeApp();
-            }
-        });
+        document.addEventListener('DOMContentLoaded', initializeApp);
 
         function loadSavedData() {
             const savedProvider = localStorage.getItem('chatProvider');
@@ -244,7 +215,6 @@
             }
         }
 
-        // --- Event Listeners ---
         providerSelect.addEventListener('change', (e) => { provider = e.target.value; localStorage.setItem('chatProvider', provider); });
         apiKeyInput.addEventListener('input', (e) => { apiKey = e.target.value; localStorage.setItem('chatApiKey', btoa(apiKey)); });
         infoButton.addEventListener('mouseenter', () => infoTooltip.classList.remove('hidden'));
@@ -258,7 +228,6 @@
         sendButton.addEventListener('click', sendMessage);
         messageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
 
-        // --- API Key Validation and Start ---
         function setStatusMessage(message, colorClass) { apiKeyStatus.textContent = message; apiKeyStatus.className = `text-xs text-center mt-2 h-4 ${colorClass}`; }
         function toggleStartButton(loading, text = 'Start') { startButton.disabled = loading; startButtonText.textContent = text; loading ? startButtonSpinner.classList.remove('hidden') : startButtonSpinner.classList.add('hidden'); }
         
@@ -275,7 +244,7 @@
             }
             try { 
                 const response = await fetch(url, options); 
-                if (provider === 'anthropic' && response.status === 400) return true; // Anthropic returns 400 for empty messages, which is a valid auth check
+                if (provider === 'anthropic' && response.status === 400) return true;
                 return response.ok; 
             } catch (error) { console.error("API verification error:", error); return false; }
         }
@@ -288,7 +257,7 @@
                 setStatusMessage('Success!', 'text-green-400');
                 setTimeout(() => {
                     initialState.style.display = 'none';
-                    chatState.classList.add('flex'); // Use flex for chat state
+                    chatState.classList.add('flex');
                     chatState.classList.remove('hidden');
                     initializeChat(); 
                     toggleStartButton(false, 'Start');
@@ -298,7 +267,6 @@
             } else { setStatusMessage('Authentication failed. Please check your key.', 'text-red-400'); toggleStartButton(false, 'Start'); }
         });
 
-        // --- Chat UI & Logic ---
         function addMessage(side, role, content) {
             const chat = side === 'left' ? leftChat : rightChat;
             const messageDiv = document.createElement('div');
@@ -424,7 +392,6 @@
             }
         }
 
-        // --- State Management Functions ---
         function initializeChat() {
             leftChat.innerHTML = ''; rightChat.innerHTML = '';
             leftMessages = []; rightMessages = [];
