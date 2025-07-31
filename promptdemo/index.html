@@ -1,16 +1,3 @@
-Of course. Here is the complete, corrected `index.html` file for your GitHub repository.
-
-This version incorporates all the necessary fixes:
-
-  * **Cache-busting** for all fetched files.
-  * **Strict error handling** that halts the application if `dreaming.txt` fails to load.
-  * **Dynamic chat initialization** that uses the actual content from your prompt files instead of hardcoded text.
-
-You can copy and paste this entire code block into your `index.html` file on GitHub.
-
------
-
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -37,21 +24,6 @@ You can copy and paste this entire code block into your `index.html` file on Git
         }
         .chat-scroll::-webkit-scrollbar-thumb:hover {
             background: #4B5563;
-        }
-        
-        /* Blinking cursor */
-        @keyframes blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0; }
-        }
-        .blinking-cursor::after {
-            content: '';
-            display: inline-block;
-            width: 10px;
-            height: 1.2em;
-            background-color: #60A5FA;
-            vertical-align: bottom;
-            animation: blink 1s step-end infinite;
         }
         
         /* Typing dots animation */
@@ -206,7 +178,7 @@ You can copy and paste this entire code block into your `index.html` file on Git
 
 
     <script>
-        // --- Core Configuration --- 
+        // --- Core Configuration ---
 
         const API_CONFIGS = {
             google: {
@@ -269,28 +241,28 @@ You can copy and paste this entire code block into your `index.html` file on Git
             }
         };
 
-        // --- Prompts --- 
+        // --- Prompts ---
         let PROMPT_WITH_EXAMPLES = 'Loading prompt...';
 
-        const PROMPT_WITHOUT_EXAMPLES = `You are a witty and acerbic therapist. 
-To help your patients, you like to provoke them. 
+        const PROMPT_WITHOUT_EXAMPLES = `You are a witty and acerbic therapist.
+To help your patients, you like to provoke them.
 
-Your Conversation follows the following pattern: 
+Your Conversation follows the following pattern:
 1. You ask the patient to tell you a dream they had 
-2. The patient tells a dream 
-3. You ask them how the dream made them feel. 
-4. They tell you. 
-5. You ask them about the meaning of the dream. 
-6. They tell you. 
+2. The patient tells a dream
+3. You ask them how the dream made them feel.
+4. They tell you.
+5. You ask them about the meaning of the dream.
+6. They tell you.
 7. You provoke them 
 
-7. is SHORT AND CONCISE, SHARP and WITTY. EXTREMELY CREATIVE. 
+7. is SHORT AND CONCISE, SHARP and WITTY. EXTREMELY CREATIVE.
 
-STRICTLY FOLLOW THE SCRIPT. 
-Now lets start. One turn at a time. 
+STRICTLY FOLLOW THE SCRIPT.
+Now lets start. One turn at a time.
 **Therapist:**`;
 
-        // --- State Management --- 
+        // --- State Management ---
         let provider = 'google';
         let apiKey = '';
         let leftMessages = [];
@@ -298,7 +270,7 @@ Now lets start. One turn at a time.
         let conversationStep = 0;
         let isFrozen = false; 
 
-        // --- DOM Elements --- 
+        // --- DOM Elements ---
         const initialState = document.getElementById('initialState');
         const chatState = document.getElementById('chatState');
         const providerSelect = document.getElementById('providerSelect');
@@ -327,9 +299,11 @@ Now lets start. One turn at a time.
         const promptWithoutExamplesContent = document.getElementById('promptWithoutExamplesContent');
 
 
-        // --- Initialization --- 
+        // --- Initialization ---
 
         async function loadPrompts() {
+            // NOTE: This URL points to the correct file. For testing, you can change it to a non-existent file
+            // like "dreamings.txt" and the app will correctly show an error on the start screen.
             const promptUrl = 'https://raw.githubusercontent.com/siliconstories/neurips25/main/promptdemo/promptfiles/dreaming.txt';
             try {
                 // Add a cache-busting query parameter to ensure the latest version is always loaded.
@@ -344,6 +318,7 @@ Now lets start. One turn at a time.
             }
         }
 
+        // CORRECTED DOMContentLoaded listener
         document.addEventListener('DOMContentLoaded', async () => {
             // Disable button and show loading text while fetching prompts
             toggleStartButton(true, 'Loading Prompts...');
@@ -357,7 +332,7 @@ Now lets start. One turn at a time.
             promptWithExamplesContent.textContent = PROMPT_WITH_EXAMPLES;
             promptWithoutExamplesContent.textContent = PROMPT_WITHOUT_EXAMPLES;
 
-            // CRITICAL: Check if the prompt loaded successfully.
+            // CRITICAL FIX: Check if the prompt loaded successfully.
             if (PROMPT_WITH_EXAMPLES.startsWith("Error:")) {
                 // If it failed, show a critical error and keep the start button disabled.
                 setStatusMessage('Critical Error: Could not load prompt file from GitHub.', 'text-red-400');
@@ -369,7 +344,6 @@ Now lets start. One turn at a time.
             }
         });
 
-        // Load saved provider and API key from localStorage.
         function loadSavedData() {
             const savedProvider = localStorage.getItem('chatProvider');
             const savedKey = localStorage.getItem('chatApiKey');
@@ -389,7 +363,7 @@ Now lets start. One turn at a time.
             return btoa(key);
         }
 
-        // --- Event Listeners --- 
+        // --- Event Listeners ---
         providerSelect.addEventListener('change', (e) => {
             provider = e.target.value;
             localStorage.setItem('chatProvider', provider);
@@ -403,7 +377,7 @@ Now lets start. One turn at a time.
         infoButton.addEventListener('mouseenter', () => infoTooltip.classList.remove('hidden'));
         infoButton.addEventListener('mouseleave', () => infoTooltip.classList.add('hidden'));
 
-        // --- API Key Validation and Start --- 
+        // --- API Key Validation and Start ---
         
         function setStatusMessage(message, colorClass) {
             apiKeyStatus.textContent = message;
@@ -413,7 +387,7 @@ Now lets start. One turn at a time.
         function toggleStartButton(loading, text = 'Start') {
             startButton.disabled = loading;
             if (loading) {
-                startButtonText.textContent = text; // Use dynamic text for loading/error states
+                startButtonText.textContent = text;
                 startButtonSpinner.classList.remove('hidden');
             } else {
                 startButtonText.textContent = text;
@@ -485,7 +459,7 @@ Now lets start. One turn at a time.
 
             if (!validateKeySyntax(provider, apiKey)) {
                 setStatusMessage('Invalid key format for selected provider.', 'text-red-400');
-                toggleStartButton(false);
+                toggleStartButton(false, 'Start');
                 return;
             }
 
@@ -497,13 +471,13 @@ Now lets start. One turn at a time.
                     initialState.classList.add('hidden');
                     chatState.classList.remove('hidden');
                     initializeChat();
-                    toggleStartButton(false);
+                    toggleStartButton(false, 'Start');
                     setStatusMessage('', '');
                     setTimeout(() => messageInput.focus(), 0);
                 }, 500);
             } else {
                 setStatusMessage('Authentication failed. Please check your key.', 'text-red-400');
-                toggleStartButton(false);
+                toggleStartButton(false, 'Start');
             }
         });
 
@@ -517,13 +491,14 @@ Now lets start. One turn at a time.
         closeWithoutExamplesBtn.addEventListener('click', () => promptWithoutExamplesPopup.classList.add('hidden'));
 
 
-        // --- Chat Logic --- 
+        // --- Chat Logic ---
         
+        // CORRECTED initializeChat function
         function initializeChat() {
             conversationStep = 0;
             
             // --- Left Chat (With Examples from dreaming.txt) ---
-            // Dynamically extract the initial message from the loaded prompt file.
+            // CRITICAL FIX: Dynamically extract the initial message from the loaded prompt file.
             // This finds the text immediately following the last "**Therapist:**" marker.
             const initialMessageLeft = PROMPT_WITH_EXAMPLES.substring(PROMPT_WITH_EXAMPLES.lastIndexOf('**Therapist:**') + '**Therapist:**'.length).trim();
 
@@ -538,13 +513,8 @@ Now lets start. One turn at a time.
             }
 
             // --- Right Chat (Without Examples) ---
-            // Do the same for the right-side chat to ensure consistency.
-            // The AI should generate the first response since this prompt ends with the marker.
-            // We expect this to be empty, signaling the AI to start.
-            const initialMessageRight = PROMPT_WITHOUT_EXAMPLES.substring(PROMPT_WITHOUT_EXAMPLES.lastIndexOf('**Therapist:**') + '**Therapist:**'.length).trim();
-            
             // The right-side prompt is designed for the AI to generate the first line.
-            // We start its history empty and immediately request a response.
+            // We start its history empty and immediately request a response from the API.
             rightMessages = [];
             handleApiResponse(rightMessages, PROMPT_WITHOUT_EXAMPLES, 'right');
 
@@ -557,7 +527,7 @@ Now lets start. One turn at a time.
             messageDiv.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'} fade-in`;
             
             const bubble = document.createElement('div');
-            bubble.className = `max-w-[80%] rounded-lg px-4 py-2 ${ 
+            bubble.className = `max-w-[80%] rounded-lg px-4 py-2 ${
                 role === 'user' 
                     ? 'bg-blue-600 text-white' 
                     : 'bg-gray-800 text-gray-100'
@@ -692,7 +662,7 @@ Now lets start. One turn at a time.
             ]);
         }
 
-        // --- State Management Functions --- 
+        // --- State Management Functions ---
         
         function freezeChat() {
             isFrozen = true;
@@ -727,7 +697,7 @@ Now lets start. One turn at a time.
             initialState.classList.remove('hidden');
         }
 
-        // --- Input Handlers --- 
+        // --- Input Handlers ---
         sendButton.addEventListener('click', sendMessage);
         messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
