@@ -92,8 +92,8 @@
     </div>
     
     <footer class="text-center text-xs text-gray-500 py-4 space-y-1">
-        <p><a href="https://neurips.cc/Conferences/2025/" target="_blank" rel="noopener noreferrer" class="hover:text-gray-300 transition-colors">NeurIPS 2025</a> Art Track Submission</p>
-        <p>Website ingested live from <a href="https://github.com/siliconstories/neurips25/tree/main/promptdemo" target="_blank" rel="noopener noreferrer" class="hover:text-gray-300 transition-colors">GitHub</a></p>
+        <p><a href="https://neurips.cc/Conferences/2025/" target="_blank" rel="noopener noreferrer" class="text-white hover:text-gray-300 transition-colors">NeurIPS 2025</a> Art Track Submission</p>
+        <p>Website ingested live from <a href="https://github.com/siliconstories/neurips25/tree/main/promptdemo" target="_blank" rel="noopener noreferrer" class="text-white hover:text-gray-300 transition-colors">GitHub</a></p>
     </footer>
     <div id="promptWithExamplesPopup" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
         <div class="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
@@ -144,18 +144,28 @@
         let rightMessages = [];
         const initialState = document.getElementById('initialState'); const chatState = document.getElementById('chatState'); const providerSelect = document.getElementById('providerSelect'); const apiKeyInput = document.getElementById('apiKeyInput'); const startButton = document.getElementById('startButton'); const startButtonText = document.getElementById('startButtonText'); const startButtonSpinner = document.getElementById('startButtonSpinner'); const apiKeyStatus = document.getElementById('apiKeyStatus'); const messageInput = document.getElementById('messageInput'); const sendButton = document.getElementById('sendButton'); const leftChat = document.getElementById('leftChat'); const rightChat = document.getElementById('rightChat'); const infoButton = document.getElementById('infoButton'); const infoTooltip = document.getElementById('infoTooltip'); const restartChatBtn = document.getElementById('restartChatBtn'); const configureChatBtn = document.getElementById('configureChatBtn'); const promptWithExamplesPopup = document.getElementById('promptWithExamplesPopup'); const promptWithoutExamplesPopup = document.getElementById('promptWithoutExamplesPopup'); const infoWithExamplesBtn = document.getElementById('infoWithExamplesBtn'); const infoWithoutExamplesBtn = document.getElementById('infoWithoutExamplesBtn'); const closeWithExamplesBtn = document.getElementById('closeWithExamplesBtn'); const closeWithoutExamplesBtn = document.getElementById('closeWithoutExamplesBtn'); const promptWithExamplesContent = document.getElementById('promptWithExamplesContent'); const promptWithoutExamplesContent = document.getElementById('promptWithoutExamplesContent'); const sceneTitle = document.getElementById('sceneTitle');
         async function loadPrompts() {
-            // Always fetch from GitHub, never use cache
+            const cachedWith = sessionStorage.getItem('prompt_with_examples');
+            const cachedWithout = sessionStorage.getItem('prompt_without_examples');
+            if (cachedWith && cachedWithout) {
+                PROMPT_WITH_EXAMPLES = cachedWith;
+                PROMPT_WITHOUT_EXAMPLES = cachedWithout;
+                sessionStorage.removeItem('prompt_with_examples');
+                sessionStorage.removeItem('prompt_without_examples');
+                return;
+            }
+            
             const baseUrl = `https://raw.githubusercontent.com/siliconstories/neurips25/main/promptdemo/promptfiles/`;
             const cacheBuster = `?t=${new Date().getTime()}`;
             try {
                 const [responseWith, responseWithout] = await Promise.all([
-                    fetch(`${baseUrl}${SCENARIO_NAME}_with.txt${cacheBuster}`, { cache: 'no-store' }),
-                    fetch(`${baseUrl}${SCENARIO_NAME}_without.txt${cacheBuster}`, { cache: 'no-store' })
+                    fetch(`${baseUrl}${SCENARIO_NAME}_with.txt${cacheBuster}`),
+                    fetch(`${baseUrl}${SCENARIO_NAME}_without.txt${cacheBuster}`)
                 ]);
                 if (!responseWith.ok) throw new Error(`Failed to load with.txt (Status: ${responseWith.status})`);
                 if (!responseWithout.ok) throw new Error(`Failed to load without.txt (Status: ${responseWithout.status})`);
                 const [textWith, textWithout] = await Promise.all([ responseWith.text(), responseWithout.text() ]);
                 PROMPT_WITH_EXAMPLES = textWith;
+                // FIX: Was incorrectly assigned textWith instead of textWithout
                 PROMPT_WITHOUT_EXAMPLES = textWithout;
             } catch (error) {
                 console.error("Failed to load prompts:", error);
