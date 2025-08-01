@@ -51,7 +51,6 @@
                 </svg>
             </button>
         </div>
-
         <!-- Chat State -->
         <div id="chatState" class="hidden flex-grow flex-col space-y-4 fade-in w-full">
             <div class="flex justify-between items-center">
@@ -96,7 +95,6 @@
         <p><a href="https://neurips.cc/Conferences/2025/" target="_blank" rel="noopener noreferrer" class="hover:text-gray-300 transition-colors">NeurIPS 2025</a> Art Track Submission</p>
         <p>Website ingested live from <a href="https://github.com/siliconstories/neurips25/tree/main/promptdemo" target="_blank" rel="noopener noreferrer" class="hover:text-gray-300 transition-colors">GitHub</a></p>
     </footer>
-
     <div id="promptWithExamplesPopup" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
         <div class="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
             <div class="p-4 border-b border-gray-800 flex justify-between items-center"><h3 class="text-lg font-medium">Prompt: With Examples</h3><button id="closeWithExamplesBtn" class="text-gray-500 hover:text-gray-300 text-2xl leading-none">&times;</button></div>
@@ -109,7 +107,6 @@
             <pre id="promptWithoutExamplesContent" class="p-4 text-xs text-gray-300 overflow-auto whitespace-pre-wrap font-mono"></pre>
         </div>
     </div>
-
     <script>
         const SCENARIO_NAME = 'dreaming';
         const API_CONFIGS = {
@@ -120,7 +117,7 @@
                     systemInstruction: { parts: [{ text: systemPrompt }] },
                     contents: messages.map(msg => ({
                         role: msg.role === 'user' ? 'user' : 'model',
-                        parts: [{ text: msg.content.replace(/\*\*(Therapist|Patient):\*\*\s*/g, '') }]
+                        parts: [{ text: msg.content }]
                     })),
                     generationConfig: { temperature: 0.7, maxOutputTokens: 1000 }
                 }),
@@ -139,20 +136,16 @@
                 extractResponse: (data) => data.content[0].text
             }
         };
-
         let PROMPT_WITH_EXAMPLES = 'Loading...';
         let PROMPT_WITHOUT_EXAMPLES = 'Loading...';
         let provider = 'google'; 
         let apiKey = ''; 
         let leftMessages = []; 
         let rightMessages = [];
-
         const initialState = document.getElementById('initialState'); const chatState = document.getElementById('chatState'); const providerSelect = document.getElementById('providerSelect'); const apiKeyInput = document.getElementById('apiKeyInput'); const startButton = document.getElementById('startButton'); const startButtonText = document.getElementById('startButtonText'); const startButtonSpinner = document.getElementById('startButtonSpinner'); const apiKeyStatus = document.getElementById('apiKeyStatus'); const messageInput = document.getElementById('messageInput'); const sendButton = document.getElementById('sendButton'); const leftChat = document.getElementById('leftChat'); const rightChat = document.getElementById('rightChat'); const infoButton = document.getElementById('infoButton'); const infoTooltip = document.getElementById('infoTooltip'); const restartChatBtn = document.getElementById('restartChatBtn'); const configureChatBtn = document.getElementById('configureChatBtn'); const promptWithExamplesPopup = document.getElementById('promptWithExamplesPopup'); const promptWithoutExamplesPopup = document.getElementById('promptWithoutExamplesPopup'); const infoWithExamplesBtn = document.getElementById('infoWithExamplesBtn'); const infoWithoutExamplesBtn = document.getElementById('infoWithoutExamplesBtn'); const closeWithExamplesBtn = document.getElementById('closeWithExamplesBtn'); const closeWithoutExamplesBtn = document.getElementById('closeWithoutExamplesBtn'); const promptWithExamplesContent = document.getElementById('promptWithExamplesContent'); const promptWithoutExamplesContent = document.getElementById('promptWithoutExamplesContent'); const sceneTitle = document.getElementById('sceneTitle');
-
         async function loadPrompts() {
             const cachedWith = sessionStorage.getItem('prompt_with_examples');
             const cachedWithout = sessionStorage.getItem('prompt_without_examples');
-
             if (cachedWith && cachedWithout) {
                 PROMPT_WITH_EXAMPLES = cachedWith;
                 PROMPT_WITHOUT_EXAMPLES = cachedWithout;
@@ -180,7 +173,6 @@
                 PROMPT_WITHOUT_EXAMPLES = `Error: ${error.message}`;
             }
         }
-
         async function initializeApp() {
             toggleStartButton(true, 'Loading Prompts...');
             await loadPrompts(); 
@@ -188,7 +180,6 @@
             promptWithExamplesContent.textContent = PROMPT_WITH_EXAMPLES;
             promptWithoutExamplesContent.textContent = PROMPT_WITHOUT_EXAMPLES;
             sceneTitle.textContent = `Scene «${SCENARIO_NAME.charAt(0).toUpperCase() + SCENARIO_NAME.slice(1)}»`;
-
             if (PROMPT_WITH_EXAMPLES.startsWith("Error:")) {
                 setStatusMessage('Critical Error: Could not load prompt files.', 'text-red-400');
                 toggleStartButton(true, 'Error: Refresh');
@@ -197,9 +188,7 @@
                 toggleStartButton(false, 'Start');
             }
         }
-
         document.addEventListener('DOMContentLoaded', initializeApp);
-
         function loadSavedData() {
             const savedProvider = localStorage.getItem('chatProvider');
             const savedKey = localStorage.getItem('chatApiKey');
@@ -215,7 +204,6 @@
                 }
             }
         }
-
         providerSelect.addEventListener('change', (e) => { provider = e.target.value; localStorage.setItem('chatProvider', provider); });
         apiKeyInput.addEventListener('input', (e) => { apiKey = e.target.value; localStorage.setItem('chatApiKey', btoa(apiKey)); });
         infoButton.addEventListener('mouseenter', () => infoTooltip.classList.remove('hidden'));
@@ -228,7 +216,6 @@
         closeWithoutExamplesBtn.addEventListener('click', () => promptWithoutExamplesPopup.classList.add('hidden'));
         sendButton.addEventListener('click', sendMessage);
         messageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
-
         function setStatusMessage(message, colorClass) { apiKeyStatus.textContent = message; apiKeyStatus.className = `text-xs text-center mt-2 h-4 ${colorClass}`; }
         function toggleStartButton(loading, text = 'Start') { startButton.disabled = loading; startButtonText.textContent = text; loading ? startButtonSpinner.classList.remove('hidden') : startButtonSpinner.classList.add('hidden'); }
         
@@ -249,7 +236,6 @@
                 return response.ok; 
             } catch (error) { console.error("API verification error:", error); return false; }
         }
-
         startButton.addEventListener('click', async () => {
             if (!apiKey) { setStatusMessage('Please enter an API key.', 'text-red-400'); return; }
             toggleStartButton(true, 'Verifying...'); setStatusMessage('Verifying...', 'text-gray-400');
@@ -267,19 +253,17 @@
                 }, 500);
             } else { setStatusMessage('Authentication failed. Please check your key.', 'text-red-400'); toggleStartButton(false, 'Start'); }
         });
-
         function addMessage(side, role, content) {
             const chat = side === 'left' ? leftChat : rightChat;
             const messageDiv = document.createElement('div');
             messageDiv.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'} fade-in`;
             const bubble = document.createElement('div');
             bubble.className = `max-w-[85%] rounded-lg px-4 py-2 text-sm ${ role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-100' }`;
-            bubble.textContent = content.replace(/\*\*(Therapist|Patient):\*\*/g, '').trim();
+            bubble.textContent = content;
             messageDiv.appendChild(bubble); 
             chat.appendChild(messageDiv); 
             chat.scrollTop = chat.scrollHeight;
         }
-
         function addTypingIndicator(side) {
             const chat = side === 'left' ? leftChat : rightChat;
             const typingDiv = document.createElement('div');
@@ -292,9 +276,7 @@
             chat.appendChild(typingDiv);
             chat.scrollTop = chat.scrollHeight;
         }
-
         function removeTypingIndicator(side) { const typing = document.getElementById(`${side}Typing`); if (typing) typing.remove(); }
-
         async function getApiResponse(messages, prompt) {
             const config = API_CONFIGS[provider];
             const response = await fetch(config.url, { method: 'POST', headers: config.headers(apiKey), body: JSON.stringify(config.formatRequest(messages, prompt)) });
@@ -329,9 +311,8 @@
                 const data = await response.json();
                 responseText = config.extractResponse(data);
             }
-            return responseText.replace(/\*\*(Therapist|Patient):\*\*/g, '').trim();
+            return responseText;
         }
-
         async function getInitialResponses() {
             addTypingIndicator('left');
             addTypingIndicator('right');
@@ -340,13 +321,11 @@
                     getApiResponse([], PROMPT_WITH_EXAMPLES),
                     getApiResponse([], PROMPT_WITHOUT_EXAMPLES)
                 ]);
-
-                leftMessages.push({ role: 'assistant', content: '**Therapist:**\n' + leftResponse });
-                rightMessages.push({ role: 'assistant', content: '**Therapist:**\n' + rightResponse });
+                leftMessages.push({ role: 'assistant', content: leftResponse });
+                rightMessages.push({ role: 'assistant', content: rightResponse });
                 
                 addMessage('left', 'assistant', leftResponse);
                 addMessage('right', 'assistant', rightResponse);
-
             } catch (error) {
                 console.error('API Error during initialization:', error);
                 addMessage('left', 'assistant', `Error: ${error.message}`);
@@ -361,28 +340,21 @@
             const message = messageInput.value.trim();
             if (!message) return;
             messageInput.value = '';
-
             addMessage('left', 'user', message);
             addMessage('right', 'user', message);
-
-            leftMessages.push({ role: 'user', content: '**Patient:**\n' + message });
-            rightMessages.push({ role: 'user', content: '**Patient:**\n' + message });
-
+            leftMessages.push({ role: 'user', content: message });
+            rightMessages.push({ role: 'user', content: message });
             addTypingIndicator('left');
             addTypingIndicator('right');
-
             try {
                 const [leftResponse, rightResponse] = await Promise.all([
                     getApiResponse(leftMessages, PROMPT_WITH_EXAMPLES),
                     getApiResponse(rightMessages, PROMPT_WITHOUT_EXAMPLES)
                 ]);
-
-                leftMessages.push({ role: 'assistant', content: '**Therapist:**\n' + leftResponse });
-                rightMessages.push({ role: 'assistant', content: '**Therapist:**\n' + rightResponse });
-
+                leftMessages.push({ role: 'assistant', content: leftResponse });
+                rightMessages.push({ role: 'assistant', content: rightResponse });
                 addMessage('left', 'assistant', leftResponse);
                 addMessage('right', 'assistant', rightResponse);
-
             } catch (error) {
                 console.error('API Error during send:', error);
                 addMessage('left', 'assistant', `Error: ${error.message}`);
@@ -392,18 +364,15 @@
                 removeTypingIndicator('right');
             }
         }
-
         function initializeChat() {
             leftChat.innerHTML = ''; rightChat.innerHTML = '';
             leftMessages = []; rightMessages = [];
             getInitialResponses();
         }
-
         function restartChat() {
             initializeChat();
             setTimeout(() => messageInput.focus(), 0);
         }
-
         function goToConfig() {
             leftChat.innerHTML = ''; rightChat.innerHTML = '';
             chatState.classList.add('hidden');
