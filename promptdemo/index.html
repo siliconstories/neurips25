@@ -3,382 +3,115 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prompt Example</title>
+    <title>Loading Application...</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .chat-scroll::-webkit-scrollbar { width: 6px; opacity: 0; transition: opacity 0.3s; }
-        .chat-scroll:hover::-webkit-scrollbar { opacity: 1; }
-        .chat-scroll::-webkit-scrollbar-track { background: transparent; }
-        .chat-scroll::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
-        .fade-in { animation: fadeIn 0.5s ease-in; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes typing { 0% { opacity: 0.3; } 50% { opacity: 1; } 100% { opacity: 0.3; } }
-        .typing-dot { animation: typing 1.4s infinite; }
-        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
-        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        /* Custom styles for smooth transitions */
+        #loader-container {
+            transition: opacity 1s ease-in-out;
+        }
+        #progress-bar-inner {
+            transition: width 2s cubic-bezier(0.4, 0, 0.2, 1); /* A smoother easing function */
+        }
     </style>
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen flex flex-col items-center justify-center p-4 font-sans">
     
-    <div id="app" class="w-full max-w-6xl flex-grow flex flex-col justify-center">
-        <!-- Initial Configuration State -->
-        <div id="initialState" class="max-w-md mx-auto space-y-6 fade-in w-full">
-            <h1 class="text-3xl font-light text-center mb-8 text-gray-100">Few-shot Dialogue: Prompt Example</h1>
-            <div class="space-y-2">
-                <label class="text-sm text-gray-400">Select Provider</label>
-                <select id="providerSelect" class="w-full bg-gray-900 border border-gray-800 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors">
-                    <option value="google">Google (Gemini 2.5 Pro)</option>
-                    <option value="openai">OpenAI (ChatGPT-4o)</option>
-                    <option value="anthropic">Anthropic (Claude Opus)</option>
-                </select>
-            </div>
-            <div class="space-y-2 relative">
-                <div class="flex items-center justify-between">
-                    <label class="text-sm text-gray-400">API Key</label>
-                    <button id="infoButton" class="text-gray-500 hover:text-gray-300 transition-colors">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    </button>
-                </div>
-                <input id="apiKeyInput" type="password" placeholder="Enter your API key" class="w-full bg-gray-900 border border-gray-800 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors">
-                <div id="apiKeyStatus" class="text-xs text-center mt-2 h-4"></div>
-                <div id="infoTooltip" class="hidden absolute mt-2 p-3 bg-gray-800 rounded-lg text-sm text-gray-300 shadow-lg z-10 w-64">Your API key is stored locally and never leaves your device except to communicate with the selected AI provider.</div>
-            </div>
-            <button id="startButton" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center">
-                <span id="startButtonText">Start</span>
-                <svg id="startButtonSpinner" class="hidden animate-spin h-5 w-5 text-white ml-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-            </button>
+    <!-- Loader UI -->
+    <div id="loader-container" class="w-full max-w-sm">
+        <div id="loader-info" class="text-center mb-4">
+            <p class="text-lg text-gray-300 mb-2">Loading from GitHub...</p>
+            <a href="https://github.com/siliconstories/neurips25" target="_blank" rel="noopener noreferrer" class="text-xs text-gray-500 hover:text-gray-300 transition-colors">
+                www.github.com/siliconstories/neurips25
+            </a>
         </div>
-        <!-- Chat State -->
-        <div id="chatState" class="hidden flex-grow flex-col space-y-4 fade-in w-full">
-            <div class="flex justify-between items-center">
-                <h1 id="sceneTitle" class="text-2xl font-light text-gray-100">Scene</h1>
-                <div class="flex space-x-2">
-                    <button id="restartChatBtn" class="bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm">Restart</button>
-                    <button id="configureChatBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm">Configure</button>
-                </div>
-            </div>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-grow min-h-0">
-                <div class="bg-gray-900 rounded-xl border border-gray-800 flex flex-col h-[300px] lg:h-auto">
-                    <div class="p-4 border-b border-gray-800 flex justify-between items-center">
-                        <h2 class="font-medium text-gray-300">With Examples</h2>
-                        <button id="infoWithExamplesBtn" class="text-gray-500 hover:text-gray-300 transition-colors">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        </button>
-                    </div>
-                    <div id="leftChat" class="flex-1 overflow-y-auto p-4 space-y-4 chat-scroll"></div>
-                </div>
-                <div class="bg-gray-900 rounded-xl border border-gray-800 flex flex-col h-[300px] lg:h-auto">
-                    <div class="p-4 border-b border-gray-800 flex justify-between items-center">
-                        <h2 class="font-medium text-gray-300">Without Examples</h2>
-                        <button id="infoWithoutExamplesBtn" class="text-gray-500 hover:text-gray-300 transition-colors">
-                           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        </button>
-                    </div>
-                    <div id="rightChat" class="flex-1 overflow-y-auto p-4 space-y-4 chat-scroll"></div>
-                </div>
-            </div>
-            <div class="bg-gray-900 rounded-xl border border-gray-700 p-4 focus-within:border-blue-500 transition-colors">
-                <div class="flex items-center space-x-3">
-                    <input id="messageInput" type="text" placeholder="Type your message..." class="flex-1 bg-transparent outline-none text-gray-100 placeholder-gray-500">
-                    <button id="sendButton" class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
-                    </button>
-                </div>
-            </div>
+        <!-- Progress Bar -->
+        <div id="progress-bar-container" class="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
+            <div id="progress-bar-inner" class="h-2 rounded-full bg-cyan-400" style="width: 0%;"></div>
         </div>
-    </div>
-    
-    <footer class="text-center text-xs text-gray-500 py-4 space-y-1">
-        <p><a href="https://neurips.cc/Conferences/2025/" target="_blank" rel="noopener noreferrer" class="text-white hover:text-gray-300 transition-colors">NeurIPS 2025</a> Art Track Submission</p>
-        <p>Website ingested live from <a href="https://github.com/siliconstories/neurips25/tree/main/promptdemo" target="_blank" rel="noopener noreferrer" class="text-white hover:text-gray-300 transition-colors">GitHub</a></p>
-    </footer>
-    <div id="promptWithExamplesPopup" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-        <div class="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-            <div class="p-4 border-b border-gray-800 flex justify-between items-center"><h3 class="text-lg font-medium">Prompt: With Examples</h3><button id="closeWithExamplesBtn" class="text-gray-500 hover:text-gray-300 text-2xl leading-none">&times;</button></div>
-            <pre id="promptWithExamplesContent" class="p-4 text-xs text-gray-300 overflow-auto whitespace-pre-wrap font-mono"></pre>
-        </div>
-    </div>
-    <div id="promptWithoutExamplesPopup" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-        <div class="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-            <div class="p-4 border-b border-gray-800 flex justify-between items-center"><h3 class="text-lg font-medium">Prompt: Without Examples</h3><button id="closeWithoutExamplesBtn" class="text-gray-500 hover:text-gray-300 text-2xl leading-none">&times;</button></div>
-            <pre id="promptWithoutExamplesContent" class="p-4 text-xs text-gray-300 overflow-auto whitespace-pre-wrap font-mono"></pre>
-        </div>
+        
+        <!-- Error Message Area -->
+        <p id="loader-error" class="text-red-400 mt-4 text-center text-sm h-5"></p>
     </div>
     <script>
-        const SCENARIO_NAME = 'dreaming';
-        const API_CONFIGS = {
-            google: {
-                url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro-latest:generateContent',
-                headers: (key) => ({ 'Content-Type': 'application/json', 'x-goog-api-key': key }),
-                formatRequest: (messages, systemPrompt) => ({
-                    systemInstruction: { parts: [{ text: systemPrompt }] },
-                    contents: messages.map(msg => ({
-                        role: msg.role === 'user' ? 'user' : 'model',
-                        parts: [{ text: msg.content }]
-                    })),
-                    generationConfig: { temperature: 0.7, maxOutputTokens: 1000 }
-                }),
-                extractResponse: (data) => data.candidates[0].content.parts[0].text
-            },
-            openai: {
-                url: 'https://api.openai.com/v1/chat/completions',
-                headers: (key) => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` }),
-                formatRequest: (messages, systemPrompt) => ({ model: 'gpt-4o', messages: [ { role: 'system', content: systemPrompt }, ...messages ], temperature: 0.7, stream: true }),
-                extractResponse: (data) => data.choices[0].message.content
-            },
-            anthropic: {
-                url: 'https://api.anthropic.com/v1/messages',
-                headers: (key) => ({ 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' }),
-                formatRequest: (messages, systemPrompt) => ({ model: 'claude-3-opus-20240229', system: systemPrompt, messages: messages, max_tokens: 1000, temperature: 0.7, stream: true }),
-                extractResponse: (data) => data.content[0].text
-            }
-        };
-        let PROMPT_WITH_EXAMPLES = 'Loading...';
-        let PROMPT_WITHOUT_EXAMPLES = 'Loading...';
-        let provider = 'google'; 
-        let apiKey = ''; 
-        let leftMessages = []; 
-        let rightMessages = [];
-        const initialState = document.getElementById('initialState'); const chatState = document.getElementById('chatState'); const providerSelect = document.getElementById('providerSelect'); const apiKeyInput = document.getElementById('apiKeyInput'); const startButton = document.getElementById('startButton'); const startButtonText = document.getElementById('startButtonText'); const startButtonSpinner = document.getElementById('startButtonSpinner'); const apiKeyStatus = document.getElementById('apiKeyStatus'); const messageInput = document.getElementById('messageInput'); const sendButton = document.getElementById('sendButton'); const leftChat = document.getElementById('leftChat'); const rightChat = document.getElementById('rightChat'); const infoButton = document.getElementById('infoButton'); const infoTooltip = document.getElementById('infoTooltip'); const restartChatBtn = document.getElementById('restartChatBtn'); const configureChatBtn = document.getElementById('configureChatBtn'); const promptWithExamplesPopup = document.getElementById('promptWithExamplesPopup'); const promptWithoutExamplesPopup = document.getElementById('promptWithoutExamplesPopup'); const infoWithExamplesBtn = document.getElementById('infoWithExamplesBtn'); const infoWithoutExamplesBtn = document.getElementById('infoWithoutExamplesBtn'); const closeWithExamplesBtn = document.getElementById('closeWithExamplesBtn'); const closeWithoutExamplesBtn = document.getElementById('closeWithoutExamplesBtn'); const promptWithExamplesContent = document.getElementById('promptWithExamplesContent'); const promptWithoutExamplesContent = document.getElementById('promptWithoutExamplesContent'); const sceneTitle = document.getElementById('sceneTitle');
-        async function loadPrompts() {
-            const cachedWith = sessionStorage.getItem('prompt_with_examples');
-            const cachedWithout = sessionStorage.getItem('prompt_without_examples');
-            if (cachedWith && cachedWithout) {
-                PROMPT_WITH_EXAMPLES = cachedWith;
-                PROMPT_WITHOUT_EXAMPLES = cachedWithout;
-                sessionStorage.removeItem('prompt_with_examples');
-                sessionStorage.removeItem('prompt_without_examples');
-                return;
-            }
-            
-            const baseUrl = `https://raw.githubusercontent.com/siliconstories/neurips25/main/promptdemo/promptfiles/`;
+        // --- DOM Element References ---
+        const progressBarInner = document.getElementById('progress-bar-inner');
+        const loaderContainer = document.getElementById('loader-container');
+        const loaderError = document.getElementById('loader-error');
+        const progressBarContainer = document.getElementById('progress-bar-container');
+        // --- Configuration: URLs for files hosted on GitHub ---
+        const GITHUB_BASE_URL = 'https://raw.githubusercontent.com/siliconstories/neurips25/main/promptdemo/';
+        const APP_PAGE_URL = GITHUB_BASE_URL + 'index.html';
+        const PROMPT_WITH_URL = GITHUB_BASE_URL + 'promptfiles/dreaming_with.txt';
+        const PROMPT_WITHOUT_URL = GITHUB_BASE_URL + 'promptfiles/dreaming_without.txt';
+        /**
+         * Fetches all required application files from GitHub.
+         * @returns {Promise<[string, string, string]>} A promise that resolves with the text content of the files.
+         */
+        async function fetchAppFiles() {
+            // Use a cache-busting query parameter to ensure the latest files are fetched
             const cacheBuster = `?t=${new Date().getTime()}`;
-            try {
-                const [responseWith, responseWithout] = await Promise.all([
-                    fetch(`${baseUrl}${SCENARIO_NAME}_with.txt${cacheBuster}`),
-                    fetch(`${baseUrl}${SCENARIO_NAME}_without.txt${cacheBuster}`)
-                ]);
-                if (!responseWith.ok) throw new Error(`Failed to load with.txt (Status: ${responseWith.status})`);
-                if (!responseWithout.ok) throw new Error(`Failed to load without.txt (Status: ${responseWithout.status})`);
-                const [textWith, textWithout] = await Promise.all([ responseWith.text(), responseWithout.text() ]);
-                PROMPT_WITH_EXAMPLES = textWith;
-                // FIX: Was incorrectly assigned textWith instead of textWithout
-                PROMPT_WITHOUT_EXAMPLES = textWithout;
-            } catch (error) {
-                console.error("Failed to load prompts:", error);
-                PROMPT_WITH_EXAMPLES = `Error: ${error.message}`;
-                PROMPT_WITHOUT_EXAMPLES = `Error: ${error.message}`;
-            }
-        }
-        async function initializeApp() {
-            toggleStartButton(true, 'Loading Prompts...');
-            await loadPrompts(); 
-            loadSavedData();
-            promptWithExamplesContent.textContent = PROMPT_WITH_EXAMPLES;
-            promptWithoutExamplesContent.textContent = PROMPT_WITHOUT_EXAMPLES;
-            sceneTitle.textContent = `Scene «${SCENARIO_NAME.charAt(0).toUpperCase() + SCENARIO_NAME.slice(1)}»`;
-            if (PROMPT_WITH_EXAMPLES.startsWith("Error:")) {
-                setStatusMessage('Critical Error: Could not load prompt files.', 'text-red-400');
-                toggleStartButton(true, 'Error: Refresh');
-            } else {
-                setStatusMessage('', '');
-                toggleStartButton(false, 'Start');
-            }
-        }
-        document.addEventListener('DOMContentLoaded', initializeApp);
-        function loadSavedData() {
-            const savedProvider = localStorage.getItem('chatProvider');
-            const savedKey = localStorage.getItem('chatApiKey');
-            if (savedProvider) { providerSelect.value = savedProvider; provider = savedProvider; }
-            if (savedKey) { 
-                try {
-                    const decodedKey = atob(savedKey);
-                    apiKeyInput.value = decodedKey; 
-                    apiKey = decodedKey; 
-                } catch(e) {
-                    console.error("Failed to decode API key from localStorage", e);
-                    localStorage.removeItem('chatApiKey');
+            // Fetch all required resources in parallel
+            const responses = await Promise.all([
+                fetch(APP_PAGE_URL + cacheBuster),
+                fetch(PROMPT_WITH_URL + cacheBuster),
+                fetch(PROMPT_WITHOUT_URL + cacheBuster)
+            ]);
+            // Check if all network requests were successful
+            for (const res of responses) {
+                if (!res.ok) {
+                    // Throw an error that includes the URL and status for better debugging
+                    throw new Error(`Request failed for ${res.url} with status ${res.status}`);
                 }
             }
+            // Get the text content from each response and return it
+            return Promise.all(responses.map(res => res.text()));
         }
-        providerSelect.addEventListener('change', (e) => { provider = e.target.value; localStorage.setItem('chatProvider', provider); });
-        apiKeyInput.addEventListener('input', (e) => { apiKey = e.target.value; localStorage.setItem('chatApiKey', btoa(apiKey)); });
-        infoButton.addEventListener('mouseenter', () => infoTooltip.classList.remove('hidden'));
-        infoButton.addEventListener('mouseleave', () => infoTooltip.classList.add('hidden'));
-        restartChatBtn.addEventListener('click', () => restartChat());
-        configureChatBtn.addEventListener('click', () => goToConfig());
-        infoWithExamplesBtn.addEventListener('click', () => promptWithExamplesPopup.classList.remove('hidden'));
-        closeWithExamplesBtn.addEventListener('click', () => promptWithExamplesPopup.classList.add('hidden'));
-        infoWithoutExamplesBtn.addEventListener('click', () => promptWithoutExamplesPopup.classList.remove('hidden'));
-        closeWithoutExamplesBtn.addEventListener('click', () => promptWithoutExamplesPopup.classList.add('hidden'));
-        sendButton.addEventListener('click', sendMessage);
-        messageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
-        function setStatusMessage(message, colorClass) { apiKeyStatus.textContent = message; apiKeyStatus.className = `text-xs text-center mt-2 h-4 ${colorClass}`; }
-        function toggleStartButton(loading, text = 'Start') { startButton.disabled = loading; startButtonText.textContent = text; loading ? startButtonSpinner.classList.remove('hidden') : startButtonSpinner.classList.add('hidden'); }
-        
-        async function verifyApiKey(provider, key) {
-            const prefixes = { google: 'AIzaSy', openai: 'sk-', anthropic: 'sk-ant-api03-' };
-            if (!key || !prefixes[provider] || !key.startsWith(prefixes[provider])) return false;
-            
-            let url, options;
-            switch (provider) {
-                case 'google': url = `https://generativelanguage.googleapis.com/v1beta/models?key=${key}`; options = { method: 'GET' }; break;
-                case 'openai': url = 'https://api.openai.com/v1/models'; options = { method: 'GET', headers: { 'Authorization': `Bearer ${key}` } }; break;
-                case 'anthropic': url = 'https://api.anthropic.com/v1/messages'; options = { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' }, body: JSON.stringify({ model: "claude-3-haiku-20240307", max_tokens: 1, messages: [] }) }; break;
-                default: return false;
-            }
-            try { 
-                const response = await fetch(url, options); 
-                if (provider === 'anthropic' && response.status === 400) return true;
-                return response.ok; 
-            } catch (error) { console.error("API verification error:", error); return false; }
-        }
-        startButton.addEventListener('click', async () => {
-            if (!apiKey) { setStatusMessage('Please enter an API key.', 'text-red-400'); return; }
-            toggleStartButton(true, 'Verifying...'); setStatusMessage('Verifying...', 'text-gray-400');
-            const isValid = await verifyApiKey(provider, apiKey);
-            if (isValid) {
-                setStatusMessage('Success!', 'text-green-400');
+        /**
+         * Main function to orchestrate the loading process, animation, and transition.
+         */
+        async function initializeLoader() {
+            // --- Start the progress bar animation ---
+            // We wrap this in a setTimeout to ensure the browser renders the initial 0% width before transitioning.
+            setTimeout(() => {
+                progressBarInner.style.width = '100%';
+            }, 10);
+            try {
+                // --- Fetch application data ---
+                const [appHtml, promptWithText, promptWithoutText] = await fetchAppFiles();
+                // --- Handle Successful Load ---
+                // Wait for the 2-second progress bar animation to complete.
                 setTimeout(() => {
-                    initialState.style.display = 'none';
-                    chatState.classList.add('flex');
-                    chatState.classList.remove('hidden');
-                    initializeChat(); 
-                    toggleStartButton(false, 'Start');
-                    setStatusMessage('', ''); 
-                    setTimeout(() => messageInput.focus(), 0);
-                }, 500);
-            } else { setStatusMessage('Authentication failed. Please check your key.', 'text-red-400'); toggleStartButton(false, 'Start'); }
-        });
-        function addMessage(side, role, content) {
-            const chat = side === 'left' ? leftChat : rightChat;
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'} fade-in`;
-            const bubble = document.createElement('div');
-            bubble.className = `max-w-[85%] rounded-lg px-4 py-2 text-sm ${ role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-100' }`;
-            bubble.textContent = content;
-            messageDiv.appendChild(bubble); 
-            chat.appendChild(messageDiv); 
-            chat.scrollTop = chat.scrollHeight;
-        }
-        function addTypingIndicator(side) {
-            const chat = side === 'left' ? leftChat : rightChat;
-            const typingDiv = document.createElement('div');
-            typingDiv.id = `${side}Typing`;
-            typingDiv.className = 'flex justify-start fade-in';
-            const bubble = document.createElement('div');
-            bubble.className = 'bg-gray-800 rounded-lg px-4 py-2 flex space-x-1';
-            for (let i = 0; i < 3; i++) { const dot = document.createElement('div'); dot.className = 'w-2 h-2 bg-gray-500 rounded-full typing-dot'; bubble.appendChild(dot); }
-            typingDiv.appendChild(bubble);
-            chat.appendChild(typingDiv);
-            chat.scrollTop = chat.scrollHeight;
-        }
-        function removeTypingIndicator(side) { const typing = document.getElementById(`${side}Typing`); if (typing) typing.remove(); }
-        async function getApiResponse(messages, prompt) {
-            const config = API_CONFIGS[provider];
-            const response = await fetch(config.url, { method: 'POST', headers: config.headers(apiKey), body: JSON.stringify(config.formatRequest(messages, prompt)) });
-            if (!response.ok) throw new Error(`API Error: ${response.status} ${await response.text()}`);
-            
-            let responseText = '';
-            if ((provider === 'openai' || provider === 'anthropic') && response.body) {
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    const chunk = decoder.decode(value);
-                    const lines = chunk.split('\n');
-                    for (const line of lines) {
-                        if (line.startsWith('data: ')) {
-                            const data = line.slice(6);
-                            if (data === '[DONE]') continue;
-                            try {
-                                const parsed = JSON.parse(data);
-                                if (provider === 'openai') {
-                                    const content = parsed.choices[0]?.delta?.content;
-                                    if (content) responseText += content;
-                                } else if (provider === 'anthropic') {
-                                    if (parsed.type === 'content_block_delta') responseText += parsed.delta.text;
-                                }
-                            } catch (e) { /* Ignore non-JSON lines */ }
-                        }
-                    }
-                }
-            } else {
-                const data = await response.json();
-                responseText = config.extractResponse(data);
-            }
-            return responseText;
-        }
-        async function getInitialResponses() {
-            addTypingIndicator('left');
-            addTypingIndicator('right');
-            try {
-                const [leftResponse, rightResponse] = await Promise.all([
-                    getApiResponse([], PROMPT_WITH_EXAMPLES),
-                    getApiResponse([], PROMPT_WITHOUT_EXAMPLES)
-                ]);
-                leftMessages.push({ role: 'assistant', content: leftResponse });
-                rightMessages.push({ role: 'assistant', content: rightResponse });
+                    // Start the 1-second fade-out transition.
+                    loaderContainer.style.opacity = '0';
+                    
+                    // After the fade-out is complete, replace the document.
+                    setTimeout(() => {
+                        sessionStorage.setItem('prompt_with_examples', promptWithText);
+                        sessionStorage.setItem('prompt_without_examples', promptWithoutText);
+                        
+                        document.open();
+                        document.write(appHtml);
+                        document.close();
+                    }, 1000); // 1 second for fade-out
+                }, 2000); // 2 seconds for progress bar
+            } catch (error) {
+                // --- Handle Loading Failure ---
+                console.error("Failed to load application:", error);
                 
-                addMessage('left', 'assistant', leftResponse);
-                addMessage('right', 'assistant', rightResponse);
-            } catch (error) {
-                console.error('API Error during initialization:', error);
-                addMessage('left', 'assistant', `Error: ${error.message}`);
-                addMessage('right', 'assistant', `Error: ${error.message}`);
-            } finally {
-                removeTypingIndicator('left');
-                removeTypingIndicator('right');
+                // Wait a moment to ensure the user sees the progress bar before it turns red.
+                setTimeout(() => {
+                    // Visually indicate the error state
+                    progressBarInner.classList.remove('bg-cyan-400');
+                    progressBarInner.classList.add('bg-red-500');
+                    // Ensure the bar is full width but in red to show a completed but failed attempt.
+                    progressBarInner.style.width = '100%'; 
+                    loaderError.textContent = `Error: Could not load resources. Please check the network and refresh.`;
+                }, 500); // A brief delay before showing the error
             }
         }
-        
-        async function sendMessage() {
-            const message = messageInput.value.trim();
-            if (!message) return;
-            messageInput.value = '';
-            addMessage('left', 'user', message);
-            addMessage('right', 'user', message);
-            leftMessages.push({ role: 'user', content: message });
-            rightMessages.push({ role: 'user', content: message });
-            addTypingIndicator('left');
-            addTypingIndicator('right');
-            try {
-                const [leftResponse, rightResponse] = await Promise.all([
-                    getApiResponse(leftMessages, PROMPT_WITH_EXAMPLES),
-                    getApiResponse(rightMessages, PROMPT_WITHOUT_EXAMPLES)
-                ]);
-                leftMessages.push({ role: 'assistant', content: leftResponse });
-                rightMessages.push({ role: 'assistant', content: rightResponse });
-                addMessage('left', 'assistant', leftResponse);
-                addMessage('right', 'assistant', rightResponse);
-            } catch (error) {
-                console.error('API Error during send:', error);
-                addMessage('left', 'assistant', `Error: ${error.message}`);
-                addMessage('right', 'assistant', `Error: ${error.message}`);
-            } finally {
-                removeTypingIndicator('left');
-                removeTypingIndicator('right');
-            }
-        }
-        function initializeChat() {
-            leftChat.innerHTML = ''; rightChat.innerHTML = '';
-            leftMessages = []; rightMessages = [];
-            getInitialResponses();
-        }
-        function restartChat() {
-            initializeChat();
-            setTimeout(() => messageInput.focus(), 0);
-        }
-        function goToConfig() {
-            leftChat.innerHTML = ''; rightChat.innerHTML = '';
-            chatState.classList.add('hidden');
-            chatState.classList.remove('flex');
-            initialState.style.display = 'block';
-        }
+        // --- Start the entire process on page load ---
+        initializeLoader();
     </script>
 </body>
 </html>
